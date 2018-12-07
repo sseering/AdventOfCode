@@ -1,0 +1,8 @@
+[package]
+name = "aoc03"
+version = "0.1.0"
+authors = ["Stefan Seering <s.seering@helferapp.com>"]
+
+[dependencies]
+regex = ""
+itertools = ""
