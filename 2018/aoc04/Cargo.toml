@@ -5,3 +5,4 @@ authors = ["Stefan Seering <s.seering@helferapp.com>"]
 
 [dependencies]
 regex = ""
+itertools = ""

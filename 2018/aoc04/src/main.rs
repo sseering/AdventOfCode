@@ -52,11 +52,26 @@
 // What is the ID of the guard you chose multiplied by the minute you chose? (In the above example, the answer would be 10 * 24 = 240.)
 // 
 // To begin, get your puzzle input.
+// our puzzle answer was 94040.
+// 
+// The first half of this puzzle is complete! It provides one gold star: *
+// --- Part Two ---
+// 
+// Strategy 2: Of all guards, which guard is most frequently asleep on the same minute?
+// 
+// In the example above, Guard #99 spent minute 45 asleep more than any other guard or minute - three times in total. (In all other cases, any guard spent any minute asleep at most twice.)
+// 
+// What is the ID of the guard you chose multiplied by the minute you chose? (In the above example, the answer would be 99 * 45 = 4455.)
+// 
+// Although it hasn't changed, you can still get your puzzle input.
 
 extern crate regex;
+extern crate itertools;
 
 use std::collections::HashMap;
+use std::cmp;
 
+use itertools::Itertools;
 use regex::Regex;
 
 const INPUT: [&'static str; 1085] = [ 
@@ -1204,7 +1219,7 @@ impl GuardStartEnds {
         self.changes.push(WakeynessChange::from_str_with_dt(false, when));
     }
 
-    pub fn asleep_duration(&self) -> u32 {
+    pub fn asleep_duration(&self) -> (u32, Vec<u32>, u32) {
         let mut i = self.changes.iter();
 
         let first = i.next().unwrap();
@@ -1212,7 +1227,9 @@ impl GuardStartEnds {
 
         let mut last_change = first;
 
-        let mut res = 0;
+        let mut duration_asleep = 0;
+        let mut minutes = HashMap::new();
+        let mut max_asleeep = 0;
 
         for change in i {
             if change.awake {
@@ -1222,40 +1239,50 @@ impl GuardStartEnds {
                     }
                     if change.same_day(last_change) {
                         if last_change.minute >= change.minute { panic!(); }
-                        res += change.minute - last_change.minute;
+                        duration_asleep += change.minute - last_change.minute;
+                        for minute in last_change.minute..change.minute {
+                           *minutes.entry(minute).or_insert(0) += 1;
+                           max_asleeep = cmp::max(max_asleeep, minutes[&minute]);
+                        }
                     } else {
                         if last_change.minute >= 60 { panic!(); }
-                        res += 60 - last_change.minute;
+                        duration_asleep += 60 - last_change.minute;
+                        for minute in last_change.minute..60 {
+                           *minutes.entry(minute).or_insert(0) += 1;
+                           max_asleeep = cmp::max(max_asleeep, minutes[&minute]);
+                        }
                     }
                 }
             }
             last_change = change;
         }
 
-        return res;
+        let sleepiest_minutes: Vec<u32> = minutes.iter().filter_map(|(minute, asleep)| if *asleep == max_asleeep { Some(*minute) } else { None }).collect();
+
+        return (duration_asleep, sleepiest_minutes, max_asleeep);
     }
 }
 
 fn parse() -> Vec<StrWithDt> {
-    const INPUT: [&'static str; 17] = [ 
-        "[1518-11-01 00:00] Guard #10 begins shift",
-        "[1518-11-01 00:05] falls asleep",
-        "[1518-11-01 00:25] wakes up",
-        "[1518-11-01 00:30] falls asleep",
-        "[1518-11-01 00:55] wakes up",
-        "[1518-11-01 23:58] Guard #99 begins shift",
-        "[1518-11-02 00:40] falls asleep",
-        "[1518-11-02 00:50] wakes up",
-        "[1518-11-03 00:05] Guard #10 begins shift",
-        "[1518-11-03 00:24] falls asleep",
-        "[1518-11-03 00:29] wakes up",
-        "[1518-11-04 00:02] Guard #99 begins shift",
-        "[1518-11-04 00:36] falls asleep",
-        "[1518-11-04 00:46] wakes up",
-        "[1518-11-05 00:03] Guard #99 begins shift",
-        "[1518-11-05 00:45] falls asleep",
-        "[1518-11-05 00:55] wakes up",
-    ];
+    // const INPUT: [&'static str; 17] = [ 
+    //     "[1518-11-01 00:00] Guard #10 begins shift",
+    //     "[1518-11-01 00:05] falls asleep",
+    //     "[1518-11-01 00:25] wakes up",
+    //     "[1518-11-01 00:30] falls asleep",
+    //     "[1518-11-01 00:55] wakes up",
+    //     "[1518-11-01 23:58] Guard #99 begins shift",
+    //     "[1518-11-02 00:40] falls asleep",
+    //     "[1518-11-02 00:50] wakes up",
+    //     "[1518-11-03 00:05] Guard #10 begins shift",
+    //     "[1518-11-03 00:24] falls asleep",
+    //     "[1518-11-03 00:29] wakes up",
+    //     "[1518-11-04 00:02] Guard #99 begins shift",
+    //     "[1518-11-04 00:36] falls asleep",
+    //     "[1518-11-04 00:46] wakes up",
+    //     "[1518-11-05 00:03] Guard #99 begins shift",
+    //     "[1518-11-05 00:45] falls asleep",
+    //     "[1518-11-05 00:55] wakes up",
+    // ];
 
     let re: Regex = Regex::new(r"\[(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2})\]\s(.+)").unwrap();
 
@@ -1272,7 +1299,7 @@ fn parse() -> Vec<StrWithDt> {
     return sortable;
 }
 
-fn part1(data: Vec<StrWithDt>) -> i32 {
+fn part1_2(data: Vec<StrWithDt>) -> HashMap<i32 ,GuardStartEnds> {
     let guard_no_re = Regex::new(r"Guard\s#(\d+)\sbegins\sshift").unwrap();
 
     let mut guards = HashMap::new();
@@ -1293,15 +1320,31 @@ fn part1(data: Vec<StrWithDt>) -> i32 {
         }
     }
 
-    for (no, guard) in guards {
-        println!("{} {}", no, guard.asleep_duration());
-    }
+    return guards;
+}
 
-    0
+fn part1(guards: &HashMap<i32, GuardStartEnds>) -> u32 {
+    let (guard_no, _, sleepiest_minute) = guards.values().map(|guard| {
+        let (asleep_duration, sleepiest_minute, _) = guard.asleep_duration();
+        return (guard.no, asleep_duration, sleepiest_minute);
+    }).fold1(|a, b| if a.1 > b.1 { a } else { b }).unwrap();
+
+    return (guard_no as u32) * sleepiest_minute[0];
+}
+
+fn part2(guards: &HashMap<i32, GuardStartEnds>) -> u32 {
+    let (guard_no, _, sleepiest_minute) = guards.values().map(|guard| {
+        let (_, sleepiest_minute, num_slept_in_minute) = guard.asleep_duration();
+        return (guard.no, num_slept_in_minute, sleepiest_minute);
+    }).fold1(|a, b| if a.1 > b.1 { a } else { b }).unwrap();
+
+    return (guard_no as u32) * sleepiest_minute[0];
 }
 
 fn main() {
     let data = parse();
-    println!("part 1 {}", part1(data));
+    let guards = part1_2(data);
+    println!("part1 {}", part1(&guards));
+    println!("part2 {}", part2(&guards));
     println!("done");
 }
