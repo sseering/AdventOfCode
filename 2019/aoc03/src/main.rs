@@ -105,7 +105,7 @@ const INPUT_TEST_3_A: & str = "R98,U47,R26,D63,R33,U87,L62,D20,R33,U53,R51";
 #[allow(dead_code)]
 const INPUT_TEST_3_B: & str = "U98,R91,D20,R16,D67,R40,U7,R15,U6,R7";
 
-fn parse(l: & str) -> Vec<(i32, i32, i32, i32)> {
+fn parse1(l: & str) -> Vec<(i32, i32, i32, i32)> {
     // x dimension grows positive to the right
     // y dimension grows positive up
     let mut sx = 0;
@@ -136,7 +136,7 @@ fn part1(a: & str, b: & str) -> i32 {
     //
     // let mut s = [[' '; 15]; 15];
     //
-    // let a = parse(a);
+    // let a = parse1(a);
     //
     // for (sx, sy, dx, dy) in a {
     //     if sx == dx {
@@ -159,8 +159,8 @@ fn part1(a: & str, b: & str) -> i32 {
     //     println!("");
     // }
 
-    let a = parse(a);
-    let b = parse(b);
+    let a = parse1(a);
+    let b = parse1(b);
 
     let mut closest = (0, 0, i32::MAX);
 
@@ -201,6 +201,137 @@ fn part1(a: & str, b: & str) -> i32 {
     return closest.2;
 }
 
+#[derive(Clone, Copy)]
+struct Point2D {
+    x: i32,
+    y: i32,
+}
+
+impl Point2D {
+    fn zero() -> Point2D {
+        Point2D {
+            x: 0,
+            y: 0,
+        }
+    }
+}
+
+enum Direction {
+    U,
+    D,
+    L,
+    R,
+}
+
+impl Direction {
+    fn new(to_parse: & str) -> Option<Direction> {
+        match to_parse {
+            "U" => Some(Direction::U),
+            "D" => Some(Direction::D),
+            "L" => Some(Direction::L),
+            "R" => Some(Direction::R),
+            _ => None,
+        }
+    }
+}
+
+struct LineSegement {
+    start: Point2D,
+    end: Point2D,
+    preceding_length: i32,
+}
+
+impl LineSegement {
+    fn new(start: Point2D, len: i32, preceding_length: i32, dir: Direction) -> LineSegement {
+        LineSegement{
+            start,
+            end: match dir {
+                Direction::U => Point2D{x: start.x, y: start.y + len},
+                Direction::D => Point2D{x: start.x, y: start.y - len},
+                Direction::L => Point2D{x: start.x - len, y: start.y},
+                Direction::R => Point2D{x: start.x + len, y: start.y},
+            },
+            preceding_length,
+        }
+    }
+
+    fn closest_to_origin(&self) -> i32 {
+        cmp::min(
+            cmp::min(self.start.x.abs(), self.start.y.abs()),
+            cmp::min(self.end.x.abs(), self.end.y.abs())
+        )
+    }
+
+    fn intersection(&self, other: & LineSegement) -> Option<(Point2D, i32)> {
+        let a_r = cmp::max(self.start.x, self.end.x);
+        let a_l = cmp::min(self.start.x, self.end.x);
+        let a_t = cmp::max(self.start.y, self.end.y);
+        let a_b = cmp::min(self.start.y, self.end.y);
+
+        let b_r = cmp::max(other.start.x, other.end.x);
+        let b_l = cmp::min(other.start.x, other.end.x);
+        let b_t = cmp::max(other.start.y, other.end.y);
+        let b_b = cmp::min(other.start.y, other.end.y);
+
+        let leftest_right = cmp::min(a_r, b_r);
+        let rightest_left = cmp::max(a_l, b_l);
+        let lowest_top = cmp::min(a_t, b_t);
+        let highest_bottom = cmp::max(a_b, b_b);
+
+        if (rightest_left <= leftest_right) && (highest_bottom <= lowest_top) && (rightest_left != 0) && (lowest_top != 0) {
+            let intersection = Point2D{x: rightest_left, y: lowest_top};
+            let dist = self.dist_to(intersection) + other.dist_to(intersection);
+            return Some((intersection, dist));
+        } else {
+            return None;
+        }
+    }
+
+    fn dist_to(&self, p: Point2D) -> i32 {
+         (p.x - self.start.x).abs() + (p.y - self.start.y).abs() + self.preceding_length
+    }
+}
+
+fn parse2(l: & str) -> Vec<LineSegement> {
+    let mut start = Point2D::zero();
+    let mut preceding_length = 0;
+
+    return l.split(",").map(|s| -> LineSegement {
+        let direction = & s[0..1];
+        let direction = Direction::new(direction).unwrap();
+        let len: i32 = (& s[1..]).parse().unwrap();
+
+        let res = LineSegement::new(start, len, preceding_length, direction);
+        start = res.end;
+        preceding_length += len;
+
+        return res;
+    }).collect();
+}
+
+fn part2(a: & str, b: & str) -> i32 {
+    let a = parse2(a);
+    let b = parse2(b);
+
+    let mut closest = (Point2D::zero(), i32::MAX);
+
+    for segment_a in & a {
+        if segment_a.closest_to_origin() >= closest.1 {
+            continue;
+        }
+
+        for segment_b in & b {
+            if let Some((point, dist)) = segment_a.intersection(segment_b) {
+                if closest.1 > dist {
+                    closest = (point, dist);
+                }
+            }
+        }
+    }
+
+    return closest.1;
+}
+
 fn main() {
     println!("part 1 selftest good: {}", part1(INPUT_TEST_1_A, INPUT_TEST_1_B) == 6);
     println!("part 1 selftest good: {}", part1(INPUT_TEST_1_B, INPUT_TEST_1_A) == 6);
@@ -209,4 +340,12 @@ fn main() {
     println!("part 1 selftest good: {}", part1(INPUT_TEST_3_A, INPUT_TEST_3_B) == 135);
     println!("part 1 selftest good: {}", part1(INPUT_TEST_3_B, INPUT_TEST_3_A) == 135);
     println!("part 1: {}", part1(INPUT_A, INPUT_B));
+
+    println!("part 2 selftest good: {}", part2(INPUT_TEST_1_A, INPUT_TEST_1_B) == 30);
+    println!("part 2 selftest good: {}", part2(INPUT_TEST_1_B, INPUT_TEST_1_A) == 30);
+    println!("part 2 selftest good: {}", part2(INPUT_TEST_2_A, INPUT_TEST_2_B) == 610);
+    println!("part 2 selftest good: {}", part2(INPUT_TEST_2_B, INPUT_TEST_2_A) == 610);
+    println!("part 2 selftest good: {}", part2(INPUT_TEST_3_A, INPUT_TEST_3_B) == 410);
+    println!("part 2 selftest good: {}", part2(INPUT_TEST_3_B, INPUT_TEST_3_A) == 410);
+    println!("part 2: {}", part2(INPUT_A, INPUT_B));
 }
