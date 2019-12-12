@@ -111,6 +111,31 @@ const TEST_INPUT_B: & str = "1002,4,3,4,33";
 #[allow(unused)]
 const TEST_INPUT_C: & str = "1101,100,-1,4,0";
 
+#[allow(unused)]
+const TEST_INPUT_D: & str = "3,9,8,9,10,9,4,9,99,-1,8";
+
+#[allow(unused)]
+const TEST_INPUT_E: & str = "3,9,7,9,10,9,4,9,99,-1,8";
+
+#[allow(unused)]
+const TEST_INPUT_F: & str = "3,3,1108,-1,8,3,4,3,99";
+
+#[allow(unused)]
+const TEST_INPUT_G: & str = "3,3,1107,-1,8,3,4,3,99";
+
+#[allow(unused)]
+const TEST_INPUT_H: & str = "3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9";
+
+#[allow(unused)]
+const TEST_INPUT_I: & str = "3,3,1105,-1,9,1101,0,0,12,4,12,99,1";
+
+#[allow(unused)]
+const TEST_INPUT_J: & str = "3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99";
+
+//  <8    46
+//         0          1            2          3         4          5            6          7          8           9        10         11         12           13         14         15           16        17         18         19        20        21           22         23          24         25        26         27           28        29         30          31          32           33        34         35           36           37        38         39        40         41           42        43         44         45         46
+//         3         21         1008         21         8         20         1005         20         22         107         8         21         20         1006         20         31         1106         0         36         98         0       INP         1002         21         125         20         4         20         1105         1         46         104         999         1105         1         46         1101         1000         1         20         4         20         1105         1         46         98         99
+
 fn parse(input: & str) -> Vec<i32> {
     input.split(",").map(|s| -> i32 { s.parse().unwrap() }).collect()
 }
@@ -120,35 +145,26 @@ enum Op {
     Calculation(fn(i32, i32) -> i32, ParamMode, ParamMode),
     Input,
     Output(ParamMode),
+    ContitionalJump(fn(i32) -> bool, ParamMode, ParamMode),
     End,
 }
 
 impl Op {
-    fn num_params(&self) -> usize {
-        match self {
-            Op::End => 0,
-            Op::Calculation(_, _, _) => 3,
-            Op::Input => 1,
-            Op::Output(_) => 1,
-        }
-    }
-
-    fn ip_diff(&self) -> usize {
-        let np = self.num_params();
-        return if np == 0 { 0 } else { np + 1 };
-    }
-
     fn new(opcode: i32) -> Op {
         const ADD: i32 = 1;
         const MUL: i32 = 2;
         const INP: i32 = 3;
         const OUT: i32 = 4;
+        const JMPT: i32 = 5;
+        const JMPF: i32 = 6;
+        const LT: i32 = 7;
+        const EQ: i32 = 8;
         const END: i32 = 99;
 
         let low_opcode = opcode % 100;
         let opcode = opcode / 100;
 
-        let (p1, p2) = if low_opcode == ADD || low_opcode == MUL {
+        let (p1, p2) = if low_opcode == ADD || low_opcode == MUL || low_opcode == LT || low_opcode == EQ {
             let p1 = ParamMode::from_int(opcode % 10);
 
             let opcode = opcode / 10;
@@ -173,31 +189,41 @@ impl Op {
             let p1 = ParamMode::from_int(opcode % 10);
 
             (p1, ParamMode::Immediate)
+        } else if low_opcode == JMPT || low_opcode == JMPF {
+            let p1 = ParamMode::from_int(opcode % 10);
+
+            let opcode = opcode / 10;
+            let p2 = ParamMode::from_int(opcode % 10);
+
+            (p1, p2)
         } else {
             (ParamMode::Immediate, ParamMode::Immediate)
         };
-
 
         return match low_opcode {
             ADD => Op::Calculation(|a, b| { return a + b }, p1, p2),
             MUL => Op::Calculation(|a, b| { return a * b }, p1, p2),
             INP => Op::Input,
             OUT => Op::Output(p1),
+            JMPT => Op::ContitionalJump(|a| { return a != 0 }, p1, p2),
+            JMPF => Op::ContitionalJump(|a| { return a == 0 }, p1, p2),
+            LT => Op::Calculation(|a, b| { return if a < b { 1 } else { 0 } }, p1, p2),
+            EQ => Op::Calculation(|a, b| { return if a == b { 1 } else { 0 } }, p1, p2),
             END => Op::End,
             _ => panic!("{}", low_opcode),
         };
     }
 
-    fn operate(&self, prog: & mut Vec<i32>, op_idx: usize, input: & mut VecDeque<i32>) -> Option<i32> {
+    fn operate(&self, prog: & mut Vec<i32>, op_idx: usize, input: & mut VecDeque<i32>) -> (usize, Option<i32>) {
         match self {
             Op::End => { panic!(); },
             Op::Input => {
                 let addr = ParamMode::Immediate.get_param(prog, op_idx + 1) as usize;
                 prog[addr] = input.pop_front().unwrap();
-                return None;
+                return (op_idx + 2, None);
             }
             Op::Output(pm) => {
-                return Some(pm.get_param(prog, op_idx + 1));
+                return (op_idx + 2, Some(pm.get_param(prog, op_idx + 1)));
             }
             Op::Calculation(fun, pm1, pm2) => {
                 let val_a = pm1.get_param(prog, op_idx + 1);
@@ -205,10 +231,14 @@ impl Op {
                 let addr = ParamMode::Immediate.get_param(prog, op_idx + 3) as usize;
                 // println!("[{}] = {} =  {} x {} ", addr, fun(val_a, val_b), val_a, val_b);
                 prog[addr] = fun(val_a, val_b);
-                return None;
+                return (op_idx + 4, None);
             },
+            Op::ContitionalJump(cond, pm1, pm2) => {
+                let cond_val = pm1.get_param(prog, op_idx + 1);
+                let jump_dst = pm2.get_param(prog, op_idx + 2) as usize;
+                return (if cond(cond_val) { jump_dst } else { op_idx + 3}, None);
+            }
         }
-
     }
 }
 
@@ -248,14 +278,19 @@ fn part1(puzzle_input: & str, input: & mut VecDeque<i32>) -> (Vec<i32>, VecDeque
             break;
         }
 
-        if let Some(out) = op.operate(&mut prog, ip, input) {
+        let (new_ip, maybe_out) = op.operate(&mut prog, ip, input);
+        if let Some(out) = maybe_out {
             output.push_back(out);
         }
 
-        ip += op.ip_diff();
+        ip = new_ip;
     }
 
     return (prog, output);
+}
+
+fn part2(puzzle_input: & str, input: & mut VecDeque<i32>) -> (Vec<i32>, VecDeque<i32>) {
+    return part1(puzzle_input, input);
 }
 
 fn deque_one(i: i32) -> VecDeque<i32> {
@@ -265,12 +300,59 @@ fn deque_one(i: i32) -> VecDeque<i32> {
 }
 
 fn main() {
+    let mut tested = 0;
+    let mut good = 0;
     for i in 0..20 {
-        println!("part 1 selftest 1.{1} good: {0}", part1(TEST_INPUT_A, & mut deque_one(i)) == (vec![i, 0, 4, 0, 99], deque_one(i)), i);
+        tested += 1;
+        if part1(TEST_INPUT_A, & mut deque_one(i)) == (vec![i, 0, 4, 0, 99], deque_one(i)) {
+            good += 1;
+        }
     }
+    println!("part 1 selftest 1 tested/good/bad: {0}/{1}/{2} => {3}", tested, good, tested - good, if tested == good { "good" } else { "OMG BADD BAD BAD!" });
     let mut empty: VecDeque<i32> = VecDeque::new();
     println!("part 1 selftest 2 good: {}", part1(TEST_INPUT_B, & mut empty) == (vec![1002, 4, 3, 4, 99], empty));
     let mut empty: VecDeque<i32> = VecDeque::new();
     println!("part 1 selftest 3 good: {}", part1(TEST_INPUT_C, & mut empty) == (vec![1101, 100, -1, 4, 99], empty));
     println!("part 1: {:?}", part1(INPUT, & mut deque_one(1)).1);
+
+    tested = 0;
+    good = 0;
+    for i in 0..20 {
+        let i_eq_8 = if i == 8 { 1 } else { 0 };
+        let i_lt_8 = if i < 8 { 1 } else { 0 };
+
+        tested += 1;
+        if part2(TEST_INPUT_D, & mut deque_one(i)) == (vec![3, 9, 8, 9, 10, 9, 4, 9, 99, i_eq_8, 8] ,deque_one(i_eq_8)) {
+            good += 1;
+        }
+        tested += 1;
+        if part2(TEST_INPUT_E, & mut deque_one(i)) == (vec![3, 9, 7, 9, 10, 9, 4 ,9 , 99, i_lt_8, 8] ,deque_one(i_lt_8)) {
+            good += 1;
+        }
+        tested += 1;
+        if part2(TEST_INPUT_F, & mut deque_one(i)) == (vec![3, 3, 1108, i_eq_8, 8, 3, 4, 3, 99], deque_one(i_eq_8)) {
+            good += 1;
+        }
+        tested += 1;
+        if part2(TEST_INPUT_G, & mut deque_one(i)) == (vec![3, 3, 1107, i_lt_8, 8, 3, 4, 3, 99], deque_one(i_lt_8)) {
+            good += 1;
+        }
+        tested += 1;
+        if part2(TEST_INPUT_H, & mut deque_one(i)) == (vec![3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, i, if i == 0 { 0 }  else { 1 }, 1, 9], deque_one(if i == 0 { i } else { 1 })) {
+            good += 1;
+        }
+        tested += 1;
+        if part2(TEST_INPUT_I, & mut deque_one(i)) == (vec![3, 3, 1105, i, 9, 1101, 0, 0, 12, 4, 12, 99, if i != 0 { 1 } else { 0 }], deque_one(if i == 0 { 0 } else { 1 })) {
+            good += 1;
+        }
+
+        let test_j_out = if i < 8 { 999 } else if i == 8 { i * 125 } else { 1000 + 1 };
+
+        tested += 1;
+        if part2(TEST_INPUT_J, & mut deque_one(i)) == (vec![3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20, 31, 1106, 0, 36, 98, if i < 8 { 0 } else if i == 8 { i*125 } else { 1000 + 1 }, i, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104, 999, 1105, 1, 46, 1101, 1000, 1, 20, 4, 20, 1105, 1, 46, 98, 99], deque_one(test_j_out)) {
+            good += 1;
+        }
+    }
+    println!("part 2 selftest 1 tested/good/bad: {0}/{1}/{2} => {3}", tested, good, tested - good, if tested == good { "good" } else { "OMG BADD BAD BAD!" });
+    println!("part 2: {:?}", part2(INPUT, & mut deque_one(5)).1);
 }
