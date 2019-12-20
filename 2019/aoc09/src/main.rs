@@ -51,9 +51,6 @@
 //
 // Although it hasn't changed, you can still get your puzzle input.
 
-use num_bigint;
-use num_traits;
-
 use num_bigint::BigInt;
 use num_traits::cast::ToPrimitive;
 use std::collections::{HashMap, VecDeque};
