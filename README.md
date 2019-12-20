@@ -2,7 +2,7 @@
 
 Me solving https://adventofcode.com/ programming challenges. Sometimes working on the challenges to learn new programming languages. Sometimes working on the challenges to learn CS algorithms.
 
-Progress over the years:
+## Progress over the years:
 
 ![Solution progress diagram](./StatusImg/StatusImg.svg)
 
