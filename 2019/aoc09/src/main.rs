@@ -51,8 +51,8 @@
 //
 // Although it hasn't changed, you can still get your puzzle input.
 
-extern crate num_bigint;
-extern crate num_traits;
+use num_bigint;
+use num_traits;
 
 use num_bigint::BigInt;
 use num_traits::cast::ToPrimitive;
@@ -242,42 +242,50 @@ impl Op {
         let opcode = opcode / 100;
 
         let mut param_modes: Vec<ParamMode> = Vec::new();
-        if low_opcode == ADD || low_opcode == MUL || low_opcode == LT || low_opcode == EQ {
-            let p1 = ParamMode::from_int(opcode % 10);
+        match low_opcode {
+            ADD | MUL | LT | EQ => {
+                let p1 = ParamMode::from_int(opcode % 10);
 
-            let opcode = opcode / 10;
-            let p2 = ParamMode::from_int(opcode % 10);
+                let opcode = opcode / 10;
+                let p2 = ParamMode::from_int(opcode % 10);
 
-            let opcode = opcode / 10;
-            let p3 = ParamMode::from_int(opcode % 10);
+                let opcode = opcode / 10;
+                let p3 = ParamMode::from_int(opcode % 10);
+                if p3 == ParamMode::Immediate {
+                    panic!();
+                }
 
-            if p3 == ParamMode::Immediate {
+                param_modes.push(p1);
+                param_modes.push(p2);
+                param_modes.push(p3);
+            }
+            INP => {
+                let p1 = ParamMode::from_int(opcode % 10);
+                if p1 == ParamMode::Immediate {
+                    panic!();
+                }
+
+                param_modes.push(p1);
+            }
+            OUT | BADJ => {
+                let p1 = ParamMode::from_int(opcode % 10);
+
+                param_modes.push(p1);
+            }
+            JMPT | JMPF => {
+                let p1 = ParamMode::from_int(opcode % 10);
+
+                let opcode = opcode / 10;
+                let p2 = ParamMode::from_int(opcode % 10);
+
+                param_modes.push(p1);
+                param_modes.push(p2);
+            }
+            END => {}
+            _ => {
                 panic!();
             }
-
-            param_modes.push(p1);
-            param_modes.push(p2);
-            param_modes.push(p3);
-        } else if low_opcode == INP {
-            let p1 = ParamMode::from_int(opcode % 10);
-            if p1 == ParamMode::Immediate {
-                panic!();
-            }
-
-            param_modes.push(p1);
-        } else if low_opcode == OUT || low_opcode == BADJ {
-            let p1 = ParamMode::from_int(opcode % 10);
-
-            param_modes.push(p1);
-        } else if low_opcode == JMPT || low_opcode == JMPF {
-            let p1 = ParamMode::from_int(opcode % 10);
-
-            let opcode = opcode / 10;
-            let p2 = ParamMode::from_int(opcode % 10);
-
-            param_modes.push(p1);
-            param_modes.push(p2);
-        };
+        }
 
         return match low_opcode {
             ADD => Op::Calculation(
