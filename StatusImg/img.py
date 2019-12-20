@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import math
-import random
 
 import cairo
 
@@ -76,7 +75,7 @@ def main() -> None:
 
                     if y == 2019:
                         if d in [1, 2, 3, 5, 9]:
-                            if d == 9:
+                            if (d == 9) or (d == 2 and part == 2):
                                 cnt.set_source_rgb(*COLOR_TODO)
                             else:
                                 cnt.set_source_rgb(*COLOR_SUCCESS)
