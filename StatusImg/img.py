@@ -74,6 +74,10 @@ def main() -> None:
                             cnt.fill()
 
                     if y == 2019:
+                        if d == 6 and part == 1:
+                            cnt.set_source_rgb(*COLOR_TODO)
+                            cnt.rectangle(*rectangle_params)
+                            cnt.fill()
                         if d in [1, 2, 3, 5, 9]:
                             if (d == 9) or (d == 2 and part == 2):
                                 cnt.set_source_rgb(*COLOR_TODO)
