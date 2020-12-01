@@ -9,7 +9,7 @@ COLOR_LOST = (0x6c / 0xff, 0x75 / 0xff, 0x7d / 0xff)
 COLOR_SUCCESS = (0x28 / 0xff, 0xa7 / 0xff, 0x45 / 0xff)
 COLOR_UNKNOWN = (0xff / 0xff, 0xc1 / 0xff, 0x07 / 0xff)
 YEAR_B = 2015
-YEAR_E = 2019 + 1
+YEAR_E = 2020 + 1
 DAY_E = 25 + 1
 YEAR_WIDTH = 55
 DAY_HEIGHT = 14
@@ -83,6 +83,12 @@ def main() -> None:
                                 cnt.set_source_rgb(*COLOR_TODO)
                             else:
                                 cnt.set_source_rgb(*COLOR_SUCCESS)
+                            cnt.rectangle(*rectangle_params)
+                            cnt.fill()
+
+                    if y == 2020:
+                        if d <= 1:
+                            cnt.set_source_rgb(*COLOR_SUCCESS)
                             cnt.rectangle(*rectangle_params)
                             cnt.fill()
 
