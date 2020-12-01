@@ -59,18 +59,62 @@ const INPUT: [i32; 200] = [
 
 #[test]
 fn test_a() {
-    assert_eq!(part_1(&TEST_INPUT), Some(514579));
+    assert_eq!(part_1_simple(&TEST_INPUT), Some(514579));
 }
 
 #[test]
 fn test_b() {
+    assert_eq!(part_2_simple(&TEST_INPUT), Some(241861950));
+}
+
+#[test]
+fn test_c() {
+    assert_eq!(part_1(&TEST_INPUT), Some(514579));
+}
+
+#[test]
+fn test_d() {
     assert_eq!(part_2(&TEST_INPUT), Some(241861950));
 }
 
+const TARGET_SUM: i32 = 2020;
+
 fn part_1(expense_report: &[i32]) -> Option<i32> {
+    // Faster than the simple solution but needs more memory.
+    let mut seen = [false; 2222]; // array length is kinda a magic constant, for bigger inputs a hash set or similar might be better
+    for a in expense_report {
+        let other = TARGET_SUM - a;
+        if seen[other as usize] {
+            return Some(a * other);
+        }
+        seen[*a as usize] = true;
+    }
+    return None;
+}
+
+fn part_2(expense_report: &[i32]) -> Option<i32> {
+    // Faster than the simple solution but needs more memory.
+    let mut seen = [false; 2222]; // array length is kinda a magic constant, for bigger inputs a hash set or similar might be better
+    for (idx_a, a) in expense_report.iter().enumerate() {
+        seen[*a as usize] = true;
+        for b in expense_report[(idx_a + 1)..].iter() {
+            seen[*b as usize] = true;
+            let other = TARGET_SUM - a - b;
+            if other >= 0 {
+                if seen[other as usize] {
+                    return Some(a * b * other);
+                }
+            }
+        }
+    }
+    return None;
+}
+
+#[allow(unused)]
+fn part_1_simple(expense_report: &[i32]) -> Option<i32> {
     for (idx, a) in expense_report.iter().enumerate() {
         for b in expense_report[(idx + 1)..].iter() {
-            if a + b == 2020 {
+            if a + b == TARGET_SUM {
                 return Some(a * b);
             }
         }
@@ -78,11 +122,12 @@ fn part_1(expense_report: &[i32]) -> Option<i32> {
     return None;
 }
 
-fn part_2(expense_report: &[i32]) -> Option<i32> {
+#[allow(unused)]
+fn part_2_simple(expense_report: &[i32]) -> Option<i32> {
     for (idx_a, a) in expense_report.iter().enumerate() {
         for (idx_b, b) in expense_report[(idx_a + 1)..].iter().enumerate() {
             for c in expense_report[(idx_b + 1)..].iter() {
-                if a + b + c == 2020 {
+                if a + b + c == TARGET_SUM {
                     return Some(a * b * c);
                 }
             }
@@ -91,15 +136,30 @@ fn part_2(expense_report: &[i32]) -> Option<i32> {
     return None;
 }
 
-fn main() {
-    if let Some(p1) = part_1(&INPUT) {
-        println!("Part 1 {0}", p1);
-    } else {
-        println!("Part 1 FAIL");
-    }
-    if let Some(p1) = part_2(&INPUT) {
-        println!("Part 2 {0}", p1);
-    } else {
-        println!("Part 2 FAIL");
-    }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let p1 = part_1(&INPUT).ok_or("no solution found")?;
+    let p1s = part_1_simple(&INPUT).ok_or("no solution found")?;
+    let p2 = part_2(&INPUT).ok_or("no solution found")?;
+    let p2s = part_2_simple(&INPUT).ok_or("no solution found")?;
+
+    println!(
+        "Part 1 solution is {0:>20}, simple version does {1}",
+        p1,
+        if p1 == p1s {
+            "match"
+        } else {
+            "NOT MATCH! ERROR!"
+        }
+    );
+    println!(
+        "Part 2 solution is {0:>20}, simple version does {1}",
+        p2,
+        if p2 == p2s {
+            "match"
+        } else {
+            "NOT MATCH! ERROR!"
+        }
+    );
+
+    return Ok(());
 }
