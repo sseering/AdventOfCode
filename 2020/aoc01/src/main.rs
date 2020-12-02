@@ -81,9 +81,12 @@ const TARGET_SUM: i32 = 2020;
 
 fn part_1(expense_report: &[i32]) -> Option<i32> {
     // Faster than the simple solution but needs more memory.
-    let mut seen = [false; 2222]; // array length is kinda a magic constant, for bigger inputs a hash set or similar might be better
+    let mut seen = [false; (TARGET_SUM + 1) as usize]; // for bigger inputs a hash set or similar might be better
     for a in expense_report {
         let other = TARGET_SUM - a;
+        if other < 0 {
+            continue;
+        }
         if seen[other as usize] {
             return Some(a * other);
         }
@@ -94,16 +97,18 @@ fn part_1(expense_report: &[i32]) -> Option<i32> {
 
 fn part_2(expense_report: &[i32]) -> Option<i32> {
     // Faster than the simple solution but needs more memory.
-    let mut seen = [false; 2222]; // array length is kinda a magic constant, for bigger inputs a hash set or similar might be better
+    let mut seen = [false; (TARGET_SUM + 1) as usize]; // for bigger inputs a hash set or similar might be better
     for (idx_a, a) in expense_report.iter().enumerate() {
-        seen[*a as usize] = true;
+        if *a <= TARGET_SUM {
+            seen[*a as usize] = true;
+        }
         for b in expense_report[(idx_a + 1)..].iter() {
-            seen[*b as usize] = true;
+            if *b <= TARGET_SUM {
+                seen[*b as usize] = true;
+            }
             let other = TARGET_SUM - a - b;
-            if other >= 0 {
-                if seen[other as usize] {
-                    return Some(a * b * other);
-                }
+            if other >= 0 && seen[other as usize] {
+                return Some(a * b * other);
             }
         }
     }
