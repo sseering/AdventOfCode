@@ -87,7 +87,7 @@ def main() -> None:
                             cnt.fill()
 
                     if y == 2020:
-                        if d <= 1 or d == 2 and part == 1:
+                        if d <= 2:
                             cnt.set_source_rgb(*COLOR_SUCCESS)
                             cnt.rectangle(*rectangle_params)
                             cnt.fill()
