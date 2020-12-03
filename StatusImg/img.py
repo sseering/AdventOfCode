@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import math
+from typing import Optional, Tuple, Iterable
 
 import cairo
 
@@ -13,9 +14,57 @@ YEAR_E = 2020 + 1
 DAY_E = 25 + 1
 YEAR_WIDTH = 55
 DAY_HEIGHT = 14
+ColorTriple = Tuple[float, float, float]
+ProgressColor = Optional[ColorTriple]
+
+
+class Progress:
+    def __init__(self) -> None:
+        self._progress = []  # dimensions: year, day, part
+        for _ in enumerate(range(YEAR_B, YEAR_E)):
+            day_sublist = []
+            for __ in enumerate(range(1, DAY_E)):
+                day_sublist.append([None, None])
+            self._progress.append(day_sublist)
+
+    def mark_progress(self, status: ProgressColor, year: int, days: Iterable[int], parts: Optional[Iterable[int]] = None) -> None:
+        if parts is None:
+            parts = [1, 2]
+
+        for d in days:
+            for p in parts:
+                self._progress[year - YEAR_B][d - 1][p - 1] = status
+
+    def get(self, year: int, day: int, part: int) -> ProgressColor:
+        return self._progress[year - YEAR_B][day - 1][part - 1]
 
 
 def main() -> None:
+    progress = Progress()
+
+    progress.mark_progress(COLOR_LOST, 2015, range(1, 8))
+    progress.mark_progress(COLOR_SUCCESS, 2015, range(8, 15))
+
+    progress.mark_progress(COLOR_LOST, 2016, range(1, 22))
+    progress.mark_progress(COLOR_LOST, 2016, [22], [1])
+
+    progress.mark_progress(COLOR_SUCCESS, 2017, range(1, 17))
+    progress.mark_progress(COLOR_UNKNOWN, 2017, [8])
+    progress.mark_progress(COLOR_UNKNOWN, 2017, [13], [2])
+    progress.mark_progress(COLOR_UNKNOWN, 2017, [16], [2])
+    progress.mark_progress(COLOR_LOST, 2017, [17])
+    progress.mark_progress(COLOR_SUCCESS, 2017, [18], [1])
+
+    progress.mark_progress(COLOR_SUCCESS, 2018, range(1, 6))
+    progress.mark_progress(COLOR_UNKNOWN, 2018, [6])
+
+    progress.mark_progress(COLOR_SUCCESS, 2019, [1, 2, 3, 5])
+    progress.mark_progress(COLOR_TODO, 2019, [9])
+    progress.mark_progress(COLOR_TODO, 2019, [2], [2])
+    progress.mark_progress(COLOR_TODO, 2019, [6], [1])
+
+    progress.mark_progress(COLOR_SUCCESS, 2020, range(1, 3))
+
     with cairo.SVGSurface('StatusImg.svg', 400, 400) as surface:
         cnt = cairo.Context(surface)
 
@@ -33,64 +82,11 @@ def main() -> None:
         for (d_idx, d) in enumerate(range(1, DAY_E)):
             for (y_idx, y) in enumerate(range(YEAR_B, YEAR_E)):
                 for (part, part_offset) in [(1, 15), (2, 37)]:
-                    rectangle_params = (part_offset + y_idx * YEAR_WIDTH, 33 + d_idx * DAY_HEIGHT, 20, 12)
-                    if y == 2015:
-                        if d < 15:
-                            if d < 8:
-                                cnt.set_source_rgb(*COLOR_LOST)
-                            else:
-                                cnt.set_source_rgb(*COLOR_SUCCESS)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
-
-                    if y == 2016:
-                        if (d < 22) or (d == 22 and part == 1):
-                            cnt.set_source_rgb(*COLOR_LOST)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
-
-                    if y == 2017:
-                        if d == 18 and part == 1:
-                            cnt.set_source_rgb(*COLOR_SUCCESS)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
-                        elif d < 18:
-                            if d == 17:
-                                cnt.set_source_rgb(*COLOR_LOST)
-                            elif (d == 8) or (d == 13 and part == 2) or (d == 16 and part == 2):
-                                cnt.set_source_rgb(*COLOR_UNKNOWN)
-                            else:
-                                cnt.set_source_rgb(*COLOR_SUCCESS)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
-
-                    if y == 2018:
-                        if d < 7:
-                            if d == 6:
-                                cnt.set_source_rgb(*COLOR_UNKNOWN)
-                            else:
-                                cnt.set_source_rgb(*COLOR_SUCCESS)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
-
-                    if y == 2019:
-                        if d == 6 and part == 1:
-                            cnt.set_source_rgb(*COLOR_TODO)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
-                        if d in [1, 2, 3, 5, 9]:
-                            if (d == 9) or (d == 2 and part == 2):
-                                cnt.set_source_rgb(*COLOR_TODO)
-                            else:
-                                cnt.set_source_rgb(*COLOR_SUCCESS)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
-
-                    if y == 2020:
-                        if d <= 2:
-                            cnt.set_source_rgb(*COLOR_SUCCESS)
-                            cnt.rectangle(*rectangle_params)
-                            cnt.fill()
+                    if color := progress.get(y, d, part):
+                        rectangle_params = (part_offset + y_idx * YEAR_WIDTH, 33 + d_idx * DAY_HEIGHT, 20, 12)
+                        cnt.set_source_rgb(*color)
+                        cnt.rectangle(*rectangle_params)
+                        cnt.fill()
 
     print('done')
 
