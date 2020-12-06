@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import math
+import colorsys
 from typing import Optional, Tuple, Iterable
 
 import cairo
@@ -9,13 +10,22 @@ COLOR_TODO = (0x00 / 0xff, 0x7b / 0xff, 0xff / 0xff)
 COLOR_LOST = (0x6c / 0xff, 0x75 / 0xff, 0x7d / 0xff)
 COLOR_SUCCESS = (0x28 / 0xff, 0xa7 / 0xff, 0x45 / 0xff)
 COLOR_UNKNOWN = (0xff / 0xff, 0xc1 / 0xff, 0x07 / 0xff)
+COLOR_LINE_BACKGROUND = (0xf6 / 0xff, 0xf8 / 0xff, 0xfa / 0xff)
+COLOR_TEXT = (0x00 / 0xff, 0x00 / 0xff, 0x00 / 0xff)
 YEAR_B = 2015
 YEAR_E = 2020 + 1
 DAY_E = 25 + 1
 YEAR_WIDTH = 55
-DAY_HEIGHT = 14
+DAY_ROW_HEIGHT = 16
+DAY_BOX_HEIGHT = 12
 ColorTriple = Tuple[float, float, float]
 ProgressColor = Optional[ColorTriple]
+IMG_WIDTH = 400
+
+
+def darken(rgb: Tuple[float, float, float]) -> Tuple[float, float, float]:
+    (h, s, v) = colorsys.rgb_to_hsv(*rgb)
+    return colorsys.hsv_to_rgb(h, s, v * 0.8)
 
 
 class Progress:
@@ -64,9 +74,10 @@ def main() -> None:
 
     progress.mark_progress(COLOR_SUCCESS, 2020, range(1, 7))
 
-    with cairo.SVGSurface('StatusImg.svg', 400, 400) as surface:
+    with cairo.SVGSurface('StatusImg.svg', IMG_WIDTH, 435) as surface:
         cnt = cairo.Context(surface)
 
+        cnt.set_source_rgb(*COLOR_TEXT)
         for (y_idx, y) in enumerate(range(YEAR_B, YEAR_E)):
             cnt.move_to(25 + y_idx * YEAR_WIDTH, 30)
             cnt.save()
@@ -75,17 +86,26 @@ def main() -> None:
             cnt.restore()
 
         for (d_idx, d) in enumerate(range(1, DAY_E)):
-            cnt.move_to(0, 42 + d_idx * DAY_HEIGHT)
+            if d % 2 == 0:
+                rectangle_params = (0, 33 + d_idx * DAY_ROW_HEIGHT, IMG_WIDTH, DAY_BOX_HEIGHT)
+                cnt.set_source_rgb(*COLOR_LINE_BACKGROUND)
+                cnt.rectangle(*rectangle_params)
+                cnt.fill()
+            cnt.set_source_rgb(*COLOR_TEXT)
+            cnt.move_to(0, 42 + d_idx * DAY_ROW_HEIGHT)
             cnt.show_text(str(d).rjust(2))
 
         for (d_idx, d) in enumerate(range(1, DAY_E)):
             for (y_idx, y) in enumerate(range(YEAR_B, YEAR_E)):
                 for (part, part_offset) in [(1, 15), (2, 37)]:
                     if color := progress.get(y, d, part):
-                        rectangle_params = (part_offset + y_idx * YEAR_WIDTH, 33 + d_idx * DAY_HEIGHT, 20, 12)
+                        rectangle_params = (part_offset + y_idx * YEAR_WIDTH, 33 + d_idx * DAY_ROW_HEIGHT, 20, DAY_BOX_HEIGHT)
                         cnt.set_source_rgb(*color)
                         cnt.rectangle(*rectangle_params)
                         cnt.fill()
+                        cnt.set_source_rgb(*darken(color))
+                        cnt.rectangle(*rectangle_params)
+                        cnt.stroke()
 
     print('done')
 
