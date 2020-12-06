@@ -66,6 +66,7 @@ const INPUT: &str = include_str!("input");
 
 #[derive(PartialEq, Eq, Debug)]
 struct SeatSpec {
+    // one could only save the id in one field as the bits line up nicely, but I keep row and col separate if we need them for a later days challenge
     row: u32,
     col: u32,
     id: u32,
