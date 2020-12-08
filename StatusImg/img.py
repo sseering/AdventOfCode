@@ -65,7 +65,7 @@ def main() -> None:
     progress.mark_progress(COLOR_LOST, 2017, [17])
     progress.mark_progress(COLOR_SUCCESS, 2017, [18], [1])
 
-    progress.mark_progress(COLOR_SUCCESS, 2018, range(1, 6))
+    progress.mark_progress(COLOR_SUCCESS, 2018, range(1, 8))
     progress.mark_progress(COLOR_UNKNOWN, 2018, [6])
 
     progress.mark_progress(COLOR_SUCCESS, 2019, [1, 2, 3, 5])
