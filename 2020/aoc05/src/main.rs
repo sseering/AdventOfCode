@@ -130,6 +130,7 @@ fn part_1<'a>(boarding_passes: &'a str) -> Option<u32> {
 fn part_2_simple<'a>(boarding_passes: &'a str) -> Option<u32> {
     let mut ids: Vec<u32> = part_1_2_parse(boarding_passes).map(|ss| ss.id).collect();
     ids.sort_unstable();
+    // in future consider using Vec.windows(2) instead of this loop
     for idx in 1..ids.len() {
         let expected = ids[idx - 1] + 1;
         if expected != ids[idx] {
