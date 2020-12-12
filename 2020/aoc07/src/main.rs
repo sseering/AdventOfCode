@@ -63,7 +63,8 @@
 // How many individual bags are required inside your single shiny gold bag?
 
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::time::Instant;
 
 #[allow(unused)]
 const TEST_INPUT_A: &str = "light red bags contain 1 bright white bag, 2 muted yellow bags.
@@ -90,7 +91,7 @@ impl FloydWarshallInput {
     }
 }
 
-fn parse(regulations: &str) -> Option<FloydWarshallInput> {
+fn parse_floyd_warshall(regulations: &str) -> Option<FloydWarshallInput> {
     let not_contains_regex: Regex =
         Regex::new(r"(\w+\s+\w+)\s+bags\s+contain\s+no\s+other\s+bags.").ok()?;
     let start_contains_regex: Regex = Regex::new(r"(\w+\s+\w+)\s+bags\s+contain\s+").ok()?;
@@ -114,12 +115,6 @@ fn parse(regulations: &str) -> Option<FloydWarshallInput> {
             let edge_end: &str = captures.get(2)?.as_str();
             vertices.insert(edge_end.to_string());
             edges.push((edge_start.to_string(), edge_end.to_string()));
-
-            // println!(
-            //     "c {}|{}",
-            //     captures.get(1)?.as_str(),
-            //     captures.get(2)?.as_str()
-            // );
         }
     }
 
@@ -130,12 +125,14 @@ fn parse(regulations: &str) -> Option<FloydWarshallInput> {
 }
 
 #[allow(unused)]
-fn part_1(regulations: &str) -> Option<usize> {
-    // We solve this by treating bag regulations like an directed graph.
+fn part_1_floyd_warshall(regulations: &str) -> Option<usize> {
+    // We solve this by treating bag regulations like a directed graph.
     // Then we find all distances in the graph using the floyd warshall algorithm.
     // This tells us which vertices of the graph can reach others.
     // Which allows us to count the solution.
-    let graph = parse(regulations)?;
+    //
+    // Turns out this is slow. Maybe a alternative solution is faster.
+    let graph = parse_floyd_warshall(regulations)?;
     let num_vertices = graph.vertices.len();
     let vertice_2_idx: HashMap<String, usize> = graph
         .vertices
@@ -185,12 +182,141 @@ fn part_1(regulations: &str) -> Option<usize> {
     return Some(res);
 }
 
+struct Part1Graph {
+    vertices: Vec<String>,
+    adjacency_matrix: Vec<Vec<bool>>,
+    shiny_gold_idx: usize,
+}
+
+impl Part1Graph {
+    fn new(vertices: Vec<String>, edges: Vec<(usize, usize)>, shiny_gold_idx: usize) -> Self {
+        let mut adjacency_matrix: Vec<Vec<bool>> = Vec::new();
+        let num_vertices = vertices.len();
+        for _ in 0..num_vertices {
+            adjacency_matrix.push(vec![false; num_vertices]);
+        }
+
+        for (s, e) in edges {
+            adjacency_matrix[s][e] = true;
+        }
+
+        return Self {
+            vertices: vertices,
+            adjacency_matrix: adjacency_matrix,
+            shiny_gold_idx: shiny_gold_idx,
+        };
+    }
+}
+
+fn part_1_parse(regulations: &str) -> Option<Part1Graph> {
+    let not_contains_regex: Regex =
+        Regex::new(r"(\w+\s+\w+)\s+bags\s+contain\s+no\s+other\s+bags.").ok()?;
+    let start_contains_regex: Regex = Regex::new(r"(\w+\s+\w+)\s+bags\s+contain\s+").ok()?;
+    let continue_contains_regex: Regex = Regex::new(r"(\d+)\s+(\w+\s+\w+)\s+bag").ok()?;
+
+    let mut seen_vertices: HashMap<String, usize> = HashMap::new();
+    let mut shiny_gold_idx: Option<usize> = None;
+    let mut vertices: Vec<String> = Vec::new();
+    let mut edges: Vec<(usize, usize)> = Vec::new();
+
+    fn add_or_get_vertex_idx(
+        bag_color: &str,
+        seen_vertices: &mut HashMap<String, usize>,
+        vertices: &mut Vec<String>,
+    ) -> Option<usize> {
+        let vertex_idx: usize = if seen_vertices.contains_key(bag_color) {
+            *seen_vertices.get(bag_color)?
+        } else {
+            let new_idx = seen_vertices.len();
+            vertices.push(bag_color.to_string());
+            seen_vertices.insert(bag_color.to_string(), new_idx);
+            new_idx
+        };
+        return Some(vertex_idx);
+    };
+
+    for line in regulations.lines() {
+        if not_contains_regex.is_match(line) {
+            continue;
+        }
+        let captures = start_contains_regex.captures(line)?;
+        let containing_bag: &str = captures.get(1)?.as_str();
+        let containing_bag_idx: usize =
+            add_or_get_vertex_idx(containing_bag, &mut seen_vertices, &mut vertices)?;
+        if containing_bag == "shiny gold" {
+            shiny_gold_idx = Some(containing_bag_idx);
+        }
+
+        for captures in continue_contains_regex.captures_iter(line) {
+            let contained_bag: &str = captures.get(2)?.as_str();
+            let contained_bag_idx: usize =
+                add_or_get_vertex_idx(contained_bag, &mut seen_vertices, &mut vertices)?;
+            if contained_bag == "shiny gold" {
+                shiny_gold_idx = Some(contained_bag_idx);
+            }
+
+            edges.push((contained_bag_idx, containing_bag_idx));
+        }
+    }
+
+    return Some(Part1Graph::new(vertices, edges, shiny_gold_idx?));
+}
+
+#[allow(unused)]
+fn part_1(regulations: &str) -> Option<usize> {
+    let graph = part_1_parse(regulations)?;
+
+    // We walk along the graph that is descried by the bag regulations.
+    // We walk in like a tree and count every node we can reach from the start node.
+    let mut res = 0;
+    let mut queued_verices: Vec<bool> = vec![false; graph.vertices.len()];
+
+    let mut vertices_to_process: VecDeque<usize> = VecDeque::new();
+    vertices_to_process.push_back(graph.shiny_gold_idx);
+    queued_verices[graph.shiny_gold_idx] = true;
+
+    while !vertices_to_process.is_empty() {
+        let v2p: usize = vertices_to_process.pop_front()?;
+        if v2p != graph.shiny_gold_idx {
+            res += 1;
+        }
+        for (vertex_idx, &is_connected) in graph.adjacency_matrix[v2p].iter().enumerate() {
+            if is_connected && !queued_verices[vertex_idx] {
+                vertices_to_process.push_back(vertex_idx);
+                queued_verices[vertex_idx] = true;
+            }
+        }
+    }
+
+    return Some(res);
+}
+
 #[test]
 fn test_a() {
+    assert_eq!(part_1_floyd_warshall(TEST_INPUT_A), Some(4))
+}
+
+#[test]
+fn test_b() {
     assert_eq!(part_1(TEST_INPUT_A), Some(4))
 }
 
 fn main() {
+    println!("Part 1 slow implementation start");
+    let start_p1_slow = Instant::now();
+    match part_1_floyd_warshall(INPUT) {
+        Some(p) => {
+            println!("Part 1: {}", p);
+        }
+        None => {
+            println!("Part 1 parse error");
+        }
+    }
+    println!(
+        "Part 1 slow implementation done in {} secs, starting fast implementation",
+        start_p1_slow.elapsed().as_secs()
+    );
+    let start_p1_fast = Instant::now();
     match part_1(INPUT) {
         Some(p) => {
             println!("Part 1: {}", p);
@@ -199,5 +325,9 @@ fn main() {
             println!("Part 1 parse error");
         }
     }
+    println!(
+        "Part 1 fast implementation done in {} secs",
+        start_p1_fast.elapsed().as_secs()
+    );
     println!("done");
 }
