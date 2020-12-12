@@ -131,7 +131,7 @@ fn part_1_floyd_warshall(regulations: &str) -> Option<usize> {
     // This tells us which vertices of the graph can reach others.
     // Which allows us to count the solution.
     //
-    // Turns out this is slow. Maybe a alternative solution is faster.
+    // Turns out this is slow. Below if a way faster solution implemented.
     let graph = parse_floyd_warshall(regulations)?;
     let num_vertices = graph.vertices.len();
     let vertice_2_idx: HashMap<String, usize> = graph
@@ -266,8 +266,8 @@ fn part_1_parse(regulations: &str) -> Option<Part1Graph> {
 fn part_1(regulations: &str) -> Option<usize> {
     let graph = part_1_parse(regulations)?;
 
-    // We walk along the graph that is descried by the bag regulations.
-    // We walk in like a tree and count every node we can reach from the start node.
+    // We walk along the graph that is described by the bag regulations.
+    // We walk the graph like a tree and count every node we can reach from the start node.
     let mut res = 0;
     let mut queued_verices: Vec<bool> = vec![false; graph.vertices.len()];
 
