@@ -78,6 +78,15 @@ faded blue bags contain no other bags.
 dotted black bags contain no other bags.";
 
 #[allow(unused)]
+const TEST_INPUT_B: &str = "shiny gold bags contain 2 dark red bags.
+dark red bags contain 2 dark orange bags.
+dark orange bags contain 2 dark yellow bags.
+dark yellow bags contain 2 dark green bags.
+dark green bags contain 2 dark blue bags.
+dark blue bags contain 2 dark violet bags.
+dark violet bags contain no other bags.";
+
+#[allow(unused)]
 const INPUT: &str = include_str!("input");
 
 struct FloydWarshallInput {
@@ -291,6 +300,138 @@ fn part_1(regulations: &str) -> Option<usize> {
     return Some(res);
 }
 
+struct Part2Edge {
+    start_vertex_idx: usize,
+    num_contained_bags: usize,
+    end_vertex_idx: usize,
+}
+
+impl Part2Edge {
+    fn new(start_vertex_idx: usize, num_contained_bags: usize, end_vertex_idx: usize) -> Self {
+        Self {
+            start_vertex_idx,
+            num_contained_bags,
+            end_vertex_idx,
+        }
+    }
+}
+
+struct Part2Graph {
+    adjacency_matrix: Vec<Vec<bool>>,
+    num_contained_bags_matrix: Vec<Vec<usize>>,
+    shiny_gold_idx: usize,
+}
+
+impl Part2Graph {
+    fn new(vertices: Vec<String>, edges: Vec<Part2Edge>, shiny_gold_idx: usize) -> Self {
+        let mut adjacency_matrix: Vec<Vec<bool>> = Vec::new();
+        let mut num_contained_bags_matrix: Vec<Vec<usize>> = Vec::new();
+        let num_vertices = vertices.len();
+        for _ in 0..num_vertices {
+            adjacency_matrix.push(vec![false; num_vertices]);
+            num_contained_bags_matrix.push(vec![0; num_vertices]);
+        }
+
+        for edge in edges {
+            adjacency_matrix[edge.start_vertex_idx][edge.end_vertex_idx] = true;
+            num_contained_bags_matrix[edge.start_vertex_idx][edge.end_vertex_idx] =
+                edge.num_contained_bags;
+        }
+
+        return Self {
+            adjacency_matrix: adjacency_matrix,
+            num_contained_bags_matrix: num_contained_bags_matrix,
+            shiny_gold_idx: shiny_gold_idx,
+        };
+    }
+}
+
+fn part_2_parse(regulations: &str) -> Option<Part2Graph> {
+    let not_contains_regex: Regex =
+        Regex::new(r"(\w+\s+\w+)\s+bags\s+contain\s+no\s+other\s+bags.").ok()?;
+    let start_contains_regex: Regex = Regex::new(r"(\w+\s+\w+)\s+bags\s+contain\s+").ok()?;
+    let continue_contains_regex: Regex = Regex::new(r"(\d+)\s+(\w+\s+\w+)\s+bag").ok()?;
+
+    let mut seen_vertices: HashMap<String, usize> = HashMap::new();
+    let mut shiny_gold_idx: Option<usize> = None;
+    let mut vertices: Vec<String> = Vec::new();
+    let mut edges: Vec<Part2Edge> = Vec::new();
+
+    fn add_or_get_vertex_idx(
+        bag_color: &str,
+        seen_vertices: &mut HashMap<String, usize>,
+        vertices: &mut Vec<String>,
+    ) -> Option<usize> {
+        let vertex_idx: usize = if seen_vertices.contains_key(bag_color) {
+            *seen_vertices.get(bag_color)?
+        } else {
+            let new_idx = seen_vertices.len();
+            vertices.push(bag_color.to_string());
+            seen_vertices.insert(bag_color.to_string(), new_idx);
+            new_idx
+        };
+        return Some(vertex_idx);
+    };
+
+    for line in regulations.lines() {
+        if not_contains_regex.is_match(line) {
+            continue;
+        }
+        let captures = start_contains_regex.captures(line)?;
+        let containing_bag: &str = captures.get(1)?.as_str();
+        let containing_bag_idx: usize =
+            add_or_get_vertex_idx(containing_bag, &mut seen_vertices, &mut vertices)?;
+        if containing_bag == "shiny gold" {
+            shiny_gold_idx = Some(containing_bag_idx);
+        }
+
+        for captures in continue_contains_regex.captures_iter(line) {
+            let num_contained_bags: usize = captures.get(1)?.as_str().parse().ok()?;
+            let contained_bag: &str = captures.get(2)?.as_str();
+            let contained_bag_idx: usize =
+                add_or_get_vertex_idx(contained_bag, &mut seen_vertices, &mut vertices)?;
+            if contained_bag == "shiny gold" {
+                shiny_gold_idx = Some(contained_bag_idx);
+            }
+
+            edges.push(Part2Edge::new(
+                containing_bag_idx,
+                num_contained_bags,
+                contained_bag_idx,
+            ));
+        }
+    }
+
+    return Some(Part2Graph::new(vertices, edges, shiny_gold_idx?));
+}
+
+#[allow(unused)]
+fn part_2(regulations: &str) -> Option<usize> {
+    let graph = part_2_parse(regulations)?;
+
+    let mut res = 0;
+
+    let mut vertices_to_process: VecDeque<(usize, usize)> = VecDeque::new();
+    vertices_to_process.push_back((graph.shiny_gold_idx, 1));
+
+    let mut endless_loop_check = 0;
+    while !vertices_to_process.is_empty() && endless_loop_check < 0xfff0 {
+        endless_loop_check += 1;
+
+        let (v2p, multiplier_so_far) = vertices_to_process.pop_front()?;
+        for (vertex_idx, &is_connected) in graph.adjacency_matrix[v2p].iter().enumerate() {
+            if is_connected {
+                let num_contained_bags = graph.num_contained_bags_matrix[v2p][vertex_idx];
+                let new_multiplier = multiplier_so_far * num_contained_bags;
+                res += new_multiplier;
+                vertices_to_process.push_back((vertex_idx, new_multiplier));
+            }
+        }
+    }
+
+    return Some(res);
+}
+
 #[test]
 fn test_a() {
     assert_eq!(part_1_floyd_warshall(TEST_INPUT_A), Some(4))
@@ -299,6 +440,16 @@ fn test_a() {
 #[test]
 fn test_b() {
     assert_eq!(part_1(TEST_INPUT_A), Some(4))
+}
+
+#[test]
+fn test_c() {
+    assert_eq!(part_2(TEST_INPUT_A), Some(32))
+}
+
+#[test]
+fn test_d() {
+    assert_eq!(part_2(TEST_INPUT_B), Some(126))
 }
 
 fn main() {
@@ -329,5 +480,13 @@ fn main() {
         "Part 1 fast implementation done in {} secs",
         start_p1_fast.elapsed().as_secs()
     );
+    match part_2(INPUT) {
+        Some(p) => {
+            println!("Part 2: {}", p);
+        }
+        None => {
+            println!("Part 2 parse error");
+        }
+    }
     println!("done");
 }
