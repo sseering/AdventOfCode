@@ -13,7 +13,7 @@ COLOR_UNKNOWN = (0xff / 0xff, 0xc1 / 0xff, 0x07 / 0xff)
 COLOR_LINE_BACKGROUND = (0xf6 / 0xff, 0xf8 / 0xff, 0xfa / 0xff)
 COLOR_TEXT = (0x00 / 0xff, 0x00 / 0xff, 0x00 / 0xff)
 YEAR_B = 2015
-YEAR_E = 2020 + 1
+YEAR_E = 2021 + 1
 DAY_E = 25 + 1
 YEAR_WIDTH = 55
 DAY_ROW_HEIGHT = 16
@@ -77,6 +77,8 @@ def main() -> None:
     progress.mark_progress(COLOR_SUCCESS, 2020, [12])
     progress.mark_progress(COLOR_SUCCESS, 2020, [13, 14], [1])
     progress.mark_progress(COLOR_SUCCESS, 2020, [15])
+
+    progress.mark_progress(COLOR_SUCCESS, 2021, [1])
 
     with cairo.SVGSurface('StatusImg.svg', IMG_WIDTH, 435) as surface:
         cnt = cairo.Context(surface)
