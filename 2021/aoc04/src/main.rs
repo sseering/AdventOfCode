@@ -145,7 +145,7 @@ fn test_a() {
 
 #[test]
 fn test_b() {
-    assert_eq!(part_2(TEST_INPUT), 0);
+    assert_eq!(part_2(TEST_INPUT), 1924);
 }
 
 fn part_1(bingo_data: &str) -> i32 {
@@ -163,7 +163,27 @@ fn part_1(bingo_data: &str) -> i32 {
 }
 
 fn part_2(bingo_data: &str) -> i32 {
-    return 0;
+    let (boards, draws) = parse_bingo_data(bingo_data);
+    let mut boards = boards;
+    let mut draws = draws.iter();
+    while boards.len() > 1 {
+        let &draw = draws.next().unwrap();
+        for board in boards.iter_mut() {
+            board.process_draw(draw);
+        }
+        boards.retain(|b| b.part_1_score(draw).is_none());
+    }
+    if boards.len() == 0 {
+        panic!();
+    }
+    let board = boards.iter_mut().next().unwrap();
+    for &draw in draws {
+        board.process_draw(draw);
+        if let Some(winning_score) = board.part_1_score(draw) {
+            return winning_score;
+        }
+    }
+    panic!();
 }
 
 fn main() {
@@ -174,5 +194,6 @@ fn main() {
     }
 
     println!("part 1: {0}", part_1(INPUT));
+    println!("part 2: {0}", part_2(INPUT));
     println!("done");
 }
