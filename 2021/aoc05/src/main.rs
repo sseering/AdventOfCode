@@ -71,10 +71,44 @@ impl Linie {
         }
         return result.into_iter();
     }
+
+    fn coords(&self) -> Vec<(i64, i64)> {
+        return if self.x1 == self.x2 && self.y1 == self.y2 {
+            vec![(self.x1, self.y1)]
+        } else if self.x1 == self.x2 {
+            let (a, b) = if self.y1 < self.y2 {
+                (self.y1, self.y2)
+            } else {
+                (self.y2, self.y1)
+            };
+            (a..=b).map(|v: i64| (self.x1, v)).collect()
+        } else if self.y1 == self.y2 {
+            let (a, b) = if self.x1 < self.x2 {
+                (self.x1, self.x2)
+            } else {
+                (self.x2, self.x1)
+            };
+            (a..=b).map(|v: i64| (v, self.y1)).collect()
+        } else {
+            let (left_x, left_y, right_x, right_y) = if self.x1 < self.x2 {
+                (self.x1, self.y1, self.x2, self.y2)
+            } else {
+                (self.x2, self.y2, self.x1, self.y1)
+            };
+            let step = if left_y < right_y { 1 } else { -1 };
+            let mut y = left_y;
+
+            let mut diag_coods = Vec::new();
+            for x in left_x..=right_x {
+                diag_coods.push((x, y));
+                y += step;
+            }
+            diag_coods
+        };
+    }
 }
 
 fn parse_input(vents_map: &str) -> impl Iterator<Item = Linie> + '_ {
-    // return vents_map.lines().map(Linie::new).collect();
     return vents_map.lines().map(Linie::new);
 }
 
@@ -88,6 +122,24 @@ fn part_1(vents_map: &str) -> usize {
         for b in &vents[(idx + 1)..] {
             for coord in a.intersection_ortogonal(b) {
                 overlaps.insert(coord);
+            }
+        }
+    }
+
+    return overlaps.len();
+}
+
+fn part_2(vents_map: &str) -> usize {
+    let vents: Vec<Linie> = parse_input(vents_map).collect();
+    let mut overlaps: HashSet<(i64, i64)> = HashSet::new();
+
+    for (idx, a) in vents.iter().enumerate() {
+        let a_coords: HashSet<(i64, i64)> = HashSet::from_iter(a.coords());
+        for b in &vents[(idx + 1)..] {
+            for coord in b.coords() {
+                if a_coords.contains(&coord) {
+                    overlaps.insert(coord);
+                }
             }
         }
     }
@@ -406,6 +458,96 @@ fn test_a() {
     assert_eq!(part_1(TEST_INPUT), 5);
 }
 
+#[test]
+fn test_b() {
+    assert_eq!(part_2(TEST_INPUT), 12);
+}
+
+#[allow(unused)]
+fn math() {
+    // 0=(-1)*x+(-1)*y+2=(-1)*x+0*y+8
+    //
+    //
+    //
+    // 0=x+(-1)*y-10=(-1)*x+(-1)*y+2
+    //
+    //
+    // 0=0*x+(-1)*y-5=(-1)*x+(-1)*y+2
+    //
+    //
+    //
+    //
+    // 0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15
+    // 1			x
+    // 2				x				o
+    // 3					x			o
+    // 4						x		o
+    // 5							x	o
+    // 6								o
+    // 7								o	x
+    // 8								o		x
+    // 9								o			x
+    // 10								o
+    // 11								o
+    // 12
+    // 13
+    // 14
+    //
+    //
+    //
+    //
+    //
+    // 0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15
+    // 1			x						o
+    // 2				x				o
+    // 3					x		o
+    // 4						o
+    // 5					o		x
+    // 6				o				x
+    // 7			o						x
+    // 8		o								x
+    // 9											x
+    // 10
+    // 11
+    // 12
+    // 13
+    // 14
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    //
+    // 0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15
+    // 1			x
+    // 2				x
+    // 3					x
+    // 4						x
+    // 5							x
+    // 6								x
+    // 7				o	o	o	o	o	o	o	o	o
+    // 8										x
+    // 9											x
+    // 10
+    // 11
+    // 12
+    // 13
+    // 14
+    //
+    //
+    //   a         b    c
+    // (-1)*x + (-1)*y +2
+    // (-1)*x +    0*y +8
+    //
+    //    1*x + (-1)*y -10
+    // (-1)*x + (-1)*y +2
+    //
+    //    0*x + (-1)*y -5
+    // (-1)*x + (-1)*y +2
+}
+
 fn main() {
     println!(
         "min max coords (size of puzzle area): {0:?}",
@@ -416,5 +558,6 @@ fn main() {
     );
 
     println!("part 1: {0}", part_1(INPUT));
+    println!("part 2: {0}", part_2(INPUT));
     println!("done");
 }
