@@ -152,6 +152,139 @@ fn part_1(crab_positions: &[usize]) -> usize {
     return min_seen;
 }
 
+#[allow(unused)]
+fn part_2_fuel_cost(crab_positions: &[usize], pos: usize) -> usize {
+    let mut num_crabs_at_pos: Vec<usize> = Vec::new();
+    for &cp in crab_positions {
+        if num_crabs_at_pos.len() <= cp {
+            num_crabs_at_pos.resize(cp + 1, 0);
+        }
+        num_crabs_at_pos[cp] += 1;
+    }
+
+    let mut linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+    let mut linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+    let mut fuel_cost_to_move_all_crabs_left_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+    let mut fuel_cost_to_move_all_crabs_right_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+
+    let mut from_right_idx: usize = num_crabs_at_pos.len();
+    let mut num_crabs_left_or_eq_to_idx = 0;
+    let mut num_crabs_right_or_eq_to_idx = 0;
+    for (from_left_idx, num_crabs_left) in num_crabs_at_pos.iter().enumerate() {
+        from_right_idx -= 1;
+        let num_crabs_right = num_crabs_at_pos[from_right_idx];
+
+        linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] =
+            num_crabs_left_or_eq_to_idx;
+        if from_left_idx > 0 {
+            linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] +=
+                linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx - 1];
+        }
+
+        fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] =
+            linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx];
+        if from_left_idx > 0 {
+            fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] +=
+                fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx - 1];
+        }
+
+        linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] =
+            num_crabs_right_or_eq_to_idx;
+        if from_left_idx > 0 {
+            linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] +=
+                linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx + 1];
+        }
+
+        fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] =
+            linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx];
+        if from_left_idx > 0 {
+            fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] +=
+                fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx + 1];
+        }
+
+        num_crabs_left_or_eq_to_idx += num_crabs_left;
+        num_crabs_right_or_eq_to_idx += num_crabs_right;
+    }
+
+    return fuel_cost_to_move_all_crabs_left_of_idx_to_idx[pos]
+        + fuel_cost_to_move_all_crabs_right_of_idx_to_idx[pos];
+}
+
+fn part_2(crab_positions: &[usize]) -> usize {
+    let mut num_crabs_at_pos: Vec<usize> = Vec::new();
+    for &cp in crab_positions {
+        if num_crabs_at_pos.len() <= cp {
+            num_crabs_at_pos.resize(cp + 1, 0);
+        }
+        num_crabs_at_pos[cp] += 1;
+    }
+
+    let mut linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+    let mut linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+    let mut fuel_cost_to_move_all_crabs_left_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+    let mut fuel_cost_to_move_all_crabs_right_of_idx_to_idx: Vec<usize> =
+        vec![0; num_crabs_at_pos.len()];
+
+    let mut from_right_idx: usize = num_crabs_at_pos.len();
+    let mut num_crabs_left_or_eq_to_idx = 0;
+    let mut num_crabs_right_or_eq_to_idx = 0;
+    for (from_left_idx, num_crabs_left) in num_crabs_at_pos.iter().enumerate() {
+        from_right_idx -= 1;
+        let num_crabs_right = num_crabs_at_pos[from_right_idx];
+
+        linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] =
+            num_crabs_left_or_eq_to_idx;
+        if from_left_idx > 0 {
+            linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] +=
+                linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx - 1];
+        }
+
+        fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] =
+            linear_fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx];
+        if from_left_idx > 0 {
+            fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx] +=
+                fuel_cost_to_move_all_crabs_left_of_idx_to_idx[from_left_idx - 1];
+        }
+
+        linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] =
+            num_crabs_right_or_eq_to_idx;
+        if from_left_idx > 0 {
+            linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] +=
+                linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx + 1];
+        }
+
+        fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] =
+            linear_fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx];
+        if from_left_idx > 0 {
+            fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx] +=
+                fuel_cost_to_move_all_crabs_right_of_idx_to_idx[from_right_idx + 1];
+        }
+
+        num_crabs_left_or_eq_to_idx += num_crabs_left;
+        num_crabs_right_or_eq_to_idx += num_crabs_right;
+    }
+
+    let mut min_seen: usize = usize::MAX;
+    for (from_l, from_r) in fuel_cost_to_move_all_crabs_left_of_idx_to_idx
+        .iter()
+        .zip(fuel_cost_to_move_all_crabs_right_of_idx_to_idx)
+    {
+        let sum = from_l + from_r;
+        if sum < min_seen {
+            min_seen = sum;
+        }
+    }
+
+    return min_seen;
+}
+
 #[test]
 fn test_a() {
     assert_eq!(part_1_fuel_cost(&TEST_INPUT, 2), 37);
@@ -177,7 +310,23 @@ fn test_e() {
     assert_eq!(part_1(&TEST_INPUT), 37);
 }
 
+#[test]
+fn test_f() {
+    assert_eq!(part_2_fuel_cost(&TEST_INPUT, 5), 168);
+}
+
+#[test]
+fn test_g() {
+    assert_eq!(part_2_fuel_cost(&TEST_INPUT, 2), 206);
+}
+
+#[test]
+fn test_h() {
+    assert_eq!(part_2(&TEST_INPUT), 168);
+}
+
 fn main() {
     println!("part 1: {0}", part_1(&INPUT));
+    println!("part 2: {0}", part_2(&INPUT));
     println!("done");
 }

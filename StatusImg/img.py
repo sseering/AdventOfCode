@@ -78,8 +78,7 @@ def main() -> None:
     progress.mark_progress(COLOR_SUCCESS, 2020, [13, 14], [1])
     progress.mark_progress(COLOR_SUCCESS, 2020, [15])
 
-    progress.mark_progress(COLOR_SUCCESS, 2021, range(1, 7))
-    progress.mark_progress(COLOR_SUCCESS, 2021, [7], [1])
+    progress.mark_progress(COLOR_SUCCESS, 2021, range(1, 8))
 
     with cairo.SVGSurface('StatusImg.svg', IMG_WIDTH, 435) as surface:
         cnt = cairo.Context(surface)
