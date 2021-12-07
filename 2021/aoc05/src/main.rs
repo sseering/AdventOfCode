@@ -55,8 +55,44 @@ impl Linie {
         );
     }
 
-    // Are there intersection points of two lines that vertical or horizontal?
-    fn intersection_ortogonal(&self, other: &Self) -> impl Iterator<Item = (i64, i64)> {
+    /// Return a description of the Linie in the form
+    /// a * x + b * y + c == 0
+    /// and its bounding box
+    /// as the form (a, b, c, min_x, max_x, min_y, max_y)
+    fn graph_form(&self) -> (i64, i64, i64, i64, i64, i64, i64) {
+        let (left_x, left_y, right_x, right_y) = if self.x1 < self.x2 {
+            (self.x1, self.y1, self.x2, self.y2)
+        } else {
+            (self.x2, self.y2, self.x1, self.y1)
+        };
+
+        let (a, b, c) = if left_x == right_x {
+            (-1, 0, left_x)
+        } else if left_y == right_y {
+            (0, -1, left_y)
+        } else {
+            let a: f32 = ((self.y2 - self.y1) as f32) / ((self.x2 - self.x1) as f32);
+            let a = a as i64;
+            if a != 1 && a != -1 {
+                panic!("we only handle lines with integer coordinates");
+            }
+            let c = self.y1 - a * self.x1;
+            (a, -1, c)
+        };
+
+        return (
+            a,
+            b,
+            c,
+            min(self.x1, self.x2),
+            max(self.x1, self.x2),
+            min(self.y1, self.y2),
+            max(self.y1, self.y2),
+        );
+    }
+
+    /// Are there intersection points of two lines that are vertical or horizontal?
+    fn intersections_ortogonal(&self, other: &Self) -> impl Iterator<Item = (i64, i64)> {
         let left_x = max(min(self.x1, self.x2), min(other.x1, other.x2));
         let right_x = min(max(self.x1, self.x2), max(other.x1, other.x2));
         let top_y = max(min(self.y1, self.y2), min(other.y1, other.y2));
@@ -106,6 +142,52 @@ impl Linie {
             diag_coods
         };
     }
+
+    fn intersections(&self, other: &Self) -> impl Iterator<Item = (i64, i64)> {
+        if self.is_ortogonal() && other.is_ortogonal() {
+            return self
+                .intersections_ortogonal(other)
+                .collect::<Vec<(i64, i64)>>()
+                .into_iter();
+        }
+        let (a1, b1, c1, min_x1, max_x1, min_y1, max_y1) = self.graph_form();
+        let (a2, b2, c2, min_x2, max_x2, min_y2, max_y2) = other.graph_form();
+
+        let mut result: Vec<(i64, i64)> = Vec::new();
+
+        // colinear (overlapping) diagonal lines?
+        if a1 == a2 && b1 == b2 {
+            if c1 == c2 {
+                let (y, step) = if a1 < 0 {
+                    (min(max_y1, max_y2), -1)
+                } else {
+                    (max(min_y1, min_y2), 1)
+                };
+                let mut y = y;
+                for x in max(min_x1, min_x2)..=min(max_x1, max_x2) {
+                    result.push((x, y));
+                    y += step;
+                }
+            }
+            return result.into_iter();
+        }
+
+        if let Some((x, y)) = integer_intersection(a1, b1, c1, a2, b2, c2) {
+            // is the intersction point inside the bounds of the lines?
+            if min_x1 <= x
+                && x <= max_x1
+                && min_x2 <= x
+                && x <= max_x2
+                && min_y1 <= y
+                && y <= max_y1
+                && min_y2 <= y
+                && y <= max_y2
+            {
+                result.push((x, y));
+            }
+        }
+        return result.into_iter();
+    }
 }
 
 fn parse_input(vents_map: &str) -> impl Iterator<Item = Linie> + '_ {
@@ -120,8 +202,26 @@ fn part_1(vents_map: &str) -> usize {
 
     for (idx, a) in vents.iter().enumerate() {
         for b in &vents[(idx + 1)..] {
-            for coord in a.intersection_ortogonal(b) {
+            for coord in a.intersections_ortogonal(b) {
                 overlaps.insert(coord);
+            }
+        }
+    }
+
+    return overlaps.len();
+}
+
+fn part_2_slow(vents_map: &str) -> usize {
+    let vents: Vec<Linie> = parse_input(vents_map).collect();
+    let mut overlaps: HashSet<(i64, i64)> = HashSet::new();
+
+    for (idx, a) in vents.iter().enumerate() {
+        let a_coords: HashSet<(i64, i64)> = HashSet::from_iter(a.coords());
+        for b in &vents[(idx + 1)..] {
+            for coord in b.coords() {
+                if a_coords.contains(&coord) {
+                    overlaps.insert(coord);
+                }
             }
         }
     }
@@ -134,12 +234,9 @@ fn part_2(vents_map: &str) -> usize {
     let mut overlaps: HashSet<(i64, i64)> = HashSet::new();
 
     for (idx, a) in vents.iter().enumerate() {
-        let a_coords: HashSet<(i64, i64)> = HashSet::from_iter(a.coords());
         for b in &vents[(idx + 1)..] {
-            for coord in b.coords() {
-                if a_coords.contains(&coord) {
-                    overlaps.insert(coord);
-                }
+            for intersection_point in a.intersections(b) {
+                overlaps.insert(intersection_point);
             }
         }
     }
@@ -173,7 +270,7 @@ fn testcase_helper(
     by2: i64,
 ) -> Vec<(i64, i64)> {
     let mut result = Linie::new(&format!("{0},{1} -> {2},{3}", ax1, ay1, ax2, ay2))
-        .intersection_ortogonal(&Linie::new(&format!(
+        .intersections_ortogonal(&Linie::new(&format!(
             "{0},{1} -> {2},{3}",
             bx1, by1, bx2, by2
         )))
@@ -460,11 +557,97 @@ fn test_a() {
 
 #[test]
 fn test_b() {
+    assert_eq!(part_2_slow(TEST_INPUT), 12);
+}
+
+#[test]
+fn test_c() {
     assert_eq!(part_2(TEST_INPUT), 12);
 }
 
-#[allow(unused)]
-fn math() {
+#[test]
+fn test_math_a() {
+    assert_eq!(integer_intersection(-1, -1, 2, -1, 0, 8), Some((8, -6)));
+}
+
+#[test]
+fn test_math_b() {
+    assert_eq!(integer_intersection(1, -1, -10, -1, -1, 2), Some((6, -4)));
+}
+
+#[test]
+fn test_math_c() {
+    assert_eq!(integer_intersection(0, -1, -7, -1, -1, 2), Some((9, -7)));
+}
+
+#[test]
+fn test_math_d() {
+    assert_eq!(integer_intersection(1, -1, -10, -1, -1, 3), None);
+}
+
+#[test]
+fn test_math_e() {
+    assert_eq!(
+        Linie::new("4,-2 -> 10,-8").graph_form(),
+        (-1, -1, 2, 4, 10, -8, -2)
+    );
+}
+
+#[test]
+fn test_math_f() {
+    assert_eq!(
+        Linie::new("5,-7 -> 11,-7").graph_form(),
+        (0, -1, -7, 5, 11, -7, -7)
+    );
+}
+
+#[test]
+fn test_math_g() {
+    assert_eq!(
+        Linie::new("8,-2 -> 8,-9").graph_form(),
+        (-1, 0, 8, 8, 8, -9, -2)
+    );
+}
+
+/// Find integer intersecton point of
+/// a1 * x + b1 * y + c1 == 0
+/// and a2 * x + b2 * y + c2 == 0
+/// where both lines are not colinear and not parallel.
+fn integer_intersection(
+    a1: i64,
+    b1: i64,
+    c1: i64,
+    a2: i64,
+    b2: i64,
+    c2: i64,
+) -> Option<(i64, i64)> {
+    if let Some((x, y)) = integer_intersection_f32(a1, b1, c1, a2, b2, c2) {
+        let x = x as i64;
+        let y = y as i64;
+
+        // if x < -1000 || x > 1000 || y < -1000 || y > 1000 {
+        //     println!("x {0} y {1}", x, y);
+        //     println!("a1 {0} b1 {1} c1 {2}", a1, b1, c1);
+        //     println!("a2 {0} b2 {1} c2 {2}", a2, b2, c2);
+        //     return None;
+        // }
+
+        // We only want to use intersection points that are on integer coordinates.
+        if (a1 * x + b1 * y + c1 == 0) && (a2 * x + b2 * y + c2 == 0) {
+            return Some((x, y));
+        }
+        return None;
+    }
+    return None;
+}
+fn integer_intersection_f32(
+    a1: i64,
+    b1: i64,
+    c1: i64,
+    a2: i64,
+    b2: i64,
+    c2: i64,
+) -> Option<(f32, f32)> {
     // 0=(-1)*x+(-1)*y+2=(-1)*x+0*y+8
     //
     //
@@ -544,8 +727,66 @@ fn math() {
     //    1*x + (-1)*y -10
     // (-1)*x + (-1)*y +2
     //
-    //    0*x + (-1)*y -5
+    //    0*x + (-1)*y -7
     // (-1)*x + (-1)*y +2
+
+    if a1 == 0 {
+        let y: f32 = ((-1 * c1) as f32) / (b1 as f32);
+        let x: f32 = ((((-1 * b2) as f32) * y) - (c2 as f32)) / (a2 as f32);
+        return Some((x, y));
+    }
+
+    if a2 == 0 {
+        let y: f32 = ((-1 * c2) as f32) / (b2 as f32);
+        let x: f32 = ((((-1 * b1) as f32) * y) - (c1 as f32)) / (a1 as f32);
+        return Some((x, y));
+    }
+
+    if b1 == 0 {
+        let x: f32 = ((-1 * c1) as f32) / (a1 as f32);
+        let y: f32 = ((((-1 * a2) as f32) * x) - (c2 as f32)) / (b2 as f32);
+        return Some((x, y));
+    }
+
+    if b2 == 0 {
+        let x: f32 = ((-1 * c2) as f32) / (a2 as f32);
+        let y: f32 = ((((-1 * a1) as f32) * x) - (c1 as f32)) / (b1 as f32);
+        return Some((x, y));
+    }
+
+    let a1: f32 = a1 as f32;
+    let b1: f32 = b1 as f32;
+    let c1: f32 = c1 as f32;
+    let a2: f32 = a2 as f32;
+    let mut b2: f32 = b2 as f32;
+    let mut c2: f32 = c2 as f32;
+
+    //    1*x + (-1)*y -10
+    // (-1)*x + (-1)*y +2
+    //
+    //  1    -1    -10
+    // -1    -1     +2           factor == 1
+    //
+    //
+    //  1    -1    -10
+    //       -2     -8    addition
+    //       y=-4
+
+    let factor: f32 = -1.0 * a2 / a1; // a2 + factor * a1 == 0
+
+    // eliminate x from second line
+    b2 += b1 * factor;
+    c2 += c1 * factor;
+
+    let y: f32 = (-1.0 * c2) / b2;
+
+    //    1*x + (-1)*y -10
+    //    1*x + (-1)*(-4) -10
+    //    x + (-1)*(-4) -10
+    //    x = 6
+    let x: f32 = ((b1 * y + c1) * -1.0) / a1;
+
+    return Some((x, y));
 }
 
 fn main() {
@@ -558,6 +799,8 @@ fn main() {
     );
 
     println!("part 1: {0}", part_1(INPUT));
+    println!("starting to compute part 2 slow variant");
+    println!("part 2: {0}", part_2_slow(INPUT));
     println!("part 2: {0}", part_2(INPUT));
     println!("done");
 }
