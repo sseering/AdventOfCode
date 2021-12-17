@@ -22,7 +22,43 @@ const TEST_INPUT_F: &str = "C0015000016115A2E0802F182340";
 const TEST_INPUT_G: &str = "A0016C880162017C3686B18A3D4780";
 
 #[allow(unused)]
+const TEST_INPUT_H: &str = "C200B40A82";
+
+#[allow(unused)]
+const TEST_INPUT_I: &str = "04005AC33890";
+
+#[allow(unused)]
+const TEST_INPUT_J: &str = "880086C3E88112";
+
+#[allow(unused)]
+const TEST_INPUT_K: &str = "CE00C43D881120";
+
+#[allow(unused)]
+const TEST_INPUT_L: &str = "D8005AC2A8F0";
+
+#[allow(unused)]
+const TEST_INPUT_M: &str = "F600BC2D8F";
+
+#[allow(unused)]
+const TEST_INPUT_N: &str = "9C005AC2F8F0";
+
+#[allow(unused)]
+const TEST_INPUT_O: &str = "9C0141080250320F1802104A08";
+
+#[allow(unused)]
 const INPUT: &str = include_str!("../input.txt");
+
+const SUM: u64 = 0;
+const PRODUCT: u64 = 1;
+const MINIMUM: u64 = 2;
+const MAXIMUM: u64 = 3;
+const LITERAL_VALUE: u64 = 4;
+const GREATER_THAN: u64 = 5;
+const LESS_THAN: u64 = 6;
+const EQUAL_TO: u64 = 7;
+const LENGTH_TYPE_ID_BITS: u64 = 0;
+#[allow(unused)]
+const LENGTH_TYPE_ID_PACKETS: u64 = 1;
 
 fn hex_char_2_byte(c: char) -> u64 {
     // I could have used the rust standard library for this. But it felt like cheating on the
@@ -74,7 +110,6 @@ fn get_bits(start_bit: usize, num_bits: usize, transmission: &Vec<u64>) -> u64 {
 fn part_1_walk(start_bit: usize, transmission: &Vec<u64>) -> (usize, u64) {
     let mut ver = get_bits(start_bit, 3, transmission);
 
-    const LITERAL_VALUE: u64 = 4;
     let packet_type = get_bits(start_bit + 3, 3, transmission);
 
     let mut end: usize;
@@ -86,7 +121,7 @@ fn part_1_walk(start_bit: usize, transmission: &Vec<u64>) -> (usize, u64) {
         end += 5;
     } else {
         let length_type_id = get_bits(start_bit + 6, 1, transmission);
-        if length_type_id == 0 {
+        if length_type_id == LENGTH_TYPE_ID_BITS {
             let length_in_bits = get_bits(start_bit + 7, 15, transmission);
             let mut walk = start_bit + 7 + 15;
             end = walk + (length_in_bits as usize);
@@ -113,7 +148,7 @@ fn part_1_walk(start_bit: usize, transmission: &Vec<u64>) -> (usize, u64) {
     return (end, ver);
 }
 
-fn part_1(transmission_str: &str) -> u64 {
+fn parse_tansmission(transmission_str: &str) -> Vec<u64> {
     let transmission_str = transmission_str.trim();
     let mut transmission: Vec<u64> = Vec::new();
     let strlen = transmission_str.len();
@@ -134,8 +169,103 @@ fn part_1(transmission_str: &str) -> u64 {
         idx += 16;
     }
 
+    return transmission;
+}
+
+fn part_1(transmission_str: &str) -> u64 {
+    let transmission = parse_tansmission(transmission_str);
+
     let (_, version_sum) = part_1_walk(0, &transmission);
     return version_sum;
+}
+
+fn part_2_walk(start_bit: usize, transmission: &Vec<u64>) -> (usize, u64) {
+    let packet_type = get_bits(start_bit + 3, 3, transmission);
+
+    let mut end: usize = start_bit + 6;
+    if packet_type == LITERAL_VALUE {
+        let mut value: u64 = 0;
+        loop {
+            let piece = get_bits(end, 5, transmission);
+            end += 5;
+            value = (value << 4) | (piece & 0x0F);
+            if piece & 0x10 == 0 {
+                break;
+            }
+        }
+        return (end, value);
+    }
+
+    let mut subpacket_values: Vec<u64> = Vec::new();
+    let length_type_id = get_bits(start_bit + 6, 1, transmission);
+    if length_type_id == LENGTH_TYPE_ID_BITS {
+        let length_in_bits = get_bits(start_bit + 7, 15, transmission);
+        let mut walk = start_bit + 7 + 15;
+        end = walk + (length_in_bits as usize);
+        while walk < end {
+            let (sub_end, sub_value) = part_2_walk(walk, transmission);
+            walk = sub_end;
+            subpacket_values.push(sub_value);
+        }
+    } else {
+        let num_sub_packets = get_bits(start_bit + 7, 11, transmission);
+        let mut walk = start_bit + 7 + 11;
+        for _ in 0..num_sub_packets {
+            let (sub_end, sub_value) = part_2_walk(walk, transmission);
+            walk = sub_end;
+            subpacket_values.push(sub_value);
+        }
+        end = walk;
+    }
+
+    match packet_type {
+        SUM => {
+            return (end, subpacket_values.iter().sum());
+        }
+        PRODUCT => {
+            return (end, subpacket_values.iter().product());
+        }
+        MINIMUM => {
+            return (end, *subpacket_values.iter().min().unwrap());
+        }
+        MAXIMUM => {
+            return (end, *subpacket_values.iter().max().unwrap());
+        }
+        GREATER_THAN => {
+            let value = if subpacket_values[0] > subpacket_values[1] {
+                1
+            } else {
+                0
+            };
+            return (end, value);
+        }
+        LESS_THAN => {
+            let value = if subpacket_values[0] < subpacket_values[1] {
+                1
+            } else {
+                0
+            };
+            return (end, value);
+        }
+        EQUAL_TO => {
+            let value = if subpacket_values[0] == subpacket_values[1] {
+                1
+            } else {
+                0
+            };
+            return (end, value);
+        }
+        _ => {
+            panic!();
+        }
+    }
+}
+
+fn part_2(transmission_str: &str) -> u64 {
+    let transmission = parse_tansmission(transmission_str);
+
+    let (_, transmission_value) = part_2_walk(0, &transmission);
+    return transmission_value;
 }
 
 #[test]
@@ -173,7 +303,48 @@ fn test_g() {
     assert_eq!(part_1(TEST_INPUT_G), 31);
 }
 
+#[test]
+fn test_h() {
+    assert_eq!(part_2(TEST_INPUT_H), 3);
+}
+
+#[test]
+fn test_i() {
+    assert_eq!(part_2(TEST_INPUT_I), 54);
+}
+
+#[test]
+fn test_j() {
+    assert_eq!(part_2(TEST_INPUT_J), 7);
+}
+
+#[test]
+fn test_k() {
+    assert_eq!(part_2(TEST_INPUT_K), 9);
+}
+
+#[test]
+fn test_l() {
+    assert_eq!(part_2(TEST_INPUT_L), 1);
+}
+
+#[test]
+fn test_m() {
+    assert_eq!(part_2(TEST_INPUT_M), 0);
+}
+
+#[test]
+fn test_n() {
+    assert_eq!(part_2(TEST_INPUT_N), 0);
+}
+
+#[test]
+fn test_o() {
+    assert_eq!(part_2(TEST_INPUT_O), 1);
+}
+
 fn main() {
     println!("part 1: {}", part_1(INPUT));
+    println!("part 2: {}", part_2(INPUT));
     println!("Done");
 }
