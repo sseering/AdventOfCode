@@ -13,14 +13,15 @@ COLOR_UNKNOWN = (0xff / 0xff, 0xc1 / 0xff, 0x07 / 0xff)
 COLOR_LINE_BACKGROUND = (0xf6 / 0xff, 0xf8 / 0xff, 0xfa / 0xff)
 COLOR_TEXT = (0x00 / 0xff, 0x00 / 0xff, 0x00 / 0xff)
 YEAR_B = 2015
-YEAR_E = 2021 + 1
+YEAR_E = 2022 + 1
 DAY_E = 25 + 1
 YEAR_WIDTH = 55
+LEFT_MARGIN = 15
 DAY_ROW_HEIGHT = 16
 DAY_BOX_HEIGHT = 12
 ColorTriple = Tuple[float, float, float]
 ProgressColor = Optional[ColorTriple]
-IMG_WIDTH = 400
+IMG_WIDTH = LEFT_MARGIN + (YEAR_E - YEAR_B) * YEAR_WIDTH
 
 
 def darken(rgb: Tuple[float, float, float]) -> Tuple[float, float, float]:
@@ -80,7 +81,9 @@ def main() -> None:
 
     progress.mark_progress(COLOR_SUCCESS, 2021, range(1, 18))
     progress.mark_progress(COLOR_SUCCESS, 2021, [20])
-    progress.mark_progress(COLOR_SUCCESS, 2021, [25])
+    progress.mark_progress(COLOR_SUCCESS, 2021, [25], [1])
+
+    progress.mark_progress(COLOR_SUCCESS, 2022, [1])
 
     with cairo.SVGSurface('StatusImg.svg', IMG_WIDTH, 435) as surface:
         cnt = cairo.Context(surface)
@@ -105,7 +108,7 @@ def main() -> None:
 
         for (d_idx, d) in enumerate(range(1, DAY_E)):
             for (y_idx, y) in enumerate(range(YEAR_B, YEAR_E)):
-                for (part, part_offset) in [(1, 15), (2, 37)]:
+                for (part, part_offset) in [(1, LEFT_MARGIN), (2, 37)]:
                     if color := progress.get(y, d, part):
                         rectangle_params = (part_offset + y_idx * YEAR_WIDTH, 33 + d_idx * DAY_ROW_HEIGHT, 20, DAY_BOX_HEIGHT)
                         cnt.set_source_rgb(*color)
