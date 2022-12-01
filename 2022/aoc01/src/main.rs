@@ -1,3 +1,5 @@
+use std::collections::BinaryHeap;
+
 #[allow(unused)]
 const INPUT: &str = include_str!("../input.txt");
 
@@ -73,6 +75,24 @@ fn part_2(calories: &str) -> u32 {
     return tbc.part_2_cals();
 }
 
+fn part_2_with_binary_heap(calories: &str) -> u32 {
+    let mut cals_sorted = BinaryHeap::new();
+
+    let mut current_cals: u32 = 0;
+
+    for line in calories.lines() {
+        if line.len() == 0 {
+            cals_sorted.push(current_cals);
+            current_cals = 0;
+        } else {
+            current_cals += line.parse::<u32>().unwrap();
+        }
+    }
+    cals_sorted.push(current_cals);
+
+    return cals_sorted.pop().unwrap() + cals_sorted.pop().unwrap() + cals_sorted.pop().unwrap();
+}
+
 #[test]
 fn test_a() {
     assert_eq!(part_1(TEST_INPUT), 24000);
@@ -83,8 +103,14 @@ fn test_b() {
     assert_eq!(part_2(TEST_INPUT), 45000);
 }
 
+#[test]
+fn test_c() {
+    assert_eq!(part_2_with_binary_heap(TEST_INPUT), 45000);
+}
+
 fn main() {
     println!("part 1: {}", part_1(INPUT));
     println!("part 2: {}", part_2(INPUT));
+    println!("part 2: {}", part_2_with_binary_heap(INPUT));
     println!("done.");
 }
