@@ -6,12 +6,20 @@ from typing import Optional, Tuple, Iterable
 
 import cairo
 
-COLOR_TODO = (0x00 / 0xff, 0x7b / 0xff, 0xff / 0xff)
-COLOR_LOST = (0x6c / 0xff, 0x75 / 0xff, 0x7d / 0xff)
-COLOR_SUCCESS = (0x28 / 0xff, 0xa7 / 0xff, 0x45 / 0xff)
-COLOR_UNKNOWN = (0xff / 0xff, 0xc1 / 0xff, 0x07 / 0xff)
-COLOR_LINE_BACKGROUND = (0xf6 / 0xff, 0xf8 / 0xff, 0xfa / 0xff)
-COLOR_TEXT = (0x00 / 0xff, 0x00 / 0xff, 0x00 / 0xff)
+
+ColorTriple = Tuple[float, float, float]
+
+
+def color_triple(r: int, g: int, b: int) -> ColorTriple:
+    return (r / 0xff, g / 0xff, b / 0xff)
+
+
+COLOR_TODO = color_triple(0x00, 0x7b, 0xff)
+COLOR_LOST = color_triple(0x6c, 0x75, 0x7d)
+COLOR_SUCCESS = color_triple(0x28, 0xa7, 0x45)
+COLOR_UNKNOWN = color_triple(0xff, 0xc1, 0x07)
+COLOR_LINE_BACKGROUND = color_triple(0xf6, 0xf8, 0xfa)
+COLOR_TEXT = color_triple(0x00, 0x00, 0x00)
 YEAR_B = 2015
 YEAR_E = 2022 + 1
 DAY_E = 25 + 1
@@ -19,12 +27,11 @@ YEAR_WIDTH = 55
 LEFT_MARGIN = 15
 DAY_ROW_HEIGHT = 16
 DAY_BOX_HEIGHT = 12
-ColorTriple = Tuple[float, float, float]
 ProgressColor = Optional[ColorTriple]
 IMG_WIDTH = LEFT_MARGIN + (YEAR_E - YEAR_B) * YEAR_WIDTH
 
 
-def darken(rgb: Tuple[float, float, float]) -> Tuple[float, float, float]:
+def darken(rgb: ColorTriple) -> ColorTriple:
     (h, s, v) = colorsys.rgb_to_hsv(*rgb)
     return colorsys.hsv_to_rgb(h, s, v * 0.8)
 
