@@ -14,7 +14,6 @@ def color_triple(r: int, g: int, b: int) -> ColorTriple:
     return (r / 0xff, g / 0xff, b / 0xff)
 
 
-COLOR_TODO = color_triple(0x00, 0x7b, 0xff)
 COLOR_LOST = color_triple(0x6c, 0x75, 0x7d)
 COLOR_SUCCESS = color_triple(0x28, 0xa7, 0x45)
 COLOR_UNKNOWN = color_triple(0xff, 0xc1, 0x07)
@@ -77,8 +76,8 @@ def main() -> None:
     progress.mark_progress(COLOR_UNKNOWN, 2018, [6])
 
     progress.mark_progress(COLOR_SUCCESS, 2019, [1, 2, 3, 5])
-    progress.mark_progress(COLOR_TODO, 2019, [9])
-    progress.mark_progress(COLOR_TODO, 2019, [6], [1])
+    progress.mark_progress(COLOR_UNKNOWN, 2019, [9])
+    progress.mark_progress(COLOR_UNKNOWN, 2019, [6], [1])
 
     progress.mark_progress(COLOR_SUCCESS, 2020, range(1, 10))
     progress.mark_progress(COLOR_SUCCESS, 2020, [10], [1])
