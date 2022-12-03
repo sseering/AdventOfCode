@@ -1,6 +1,6 @@
 # AdventOfCode
 
-Me solving https://adventofcode.com/ programming challenges. Sometimes working on the challenges to learn new programming languages. Sometimes working on the challenges to learn CS algorithms.
+Solving https://adventofcode.com/ programming challenges. Sometimes working on the challenges to learn new programming languages. Sometimes working on the challenges to learn CS algorithms. Sometimes just for fun.
 
 ## Progress over the years:
 
