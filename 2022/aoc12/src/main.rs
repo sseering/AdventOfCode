@@ -102,13 +102,13 @@ impl PartialOrd for Point2DWithDist {
 //     }
 // }
 
-fn neighbors(
+fn neighbors_part_1(
     from: &Point2D,
     height_map: &Vec<Vec<u8>>,
     done: &Vec<Vec<bool>>,
     width: usize,
     height: usize,
-) -> impl Iterator<Item = Point2D> {
+) -> Vec<Point2D> {
     let from_height_p1 = height_map[from.y][from.x] + 1;
 
     let mut res: Vec<Point2D> = Vec::new();
@@ -141,10 +141,51 @@ fn neighbors(
         }
     }
 
-    return res.into_iter();
+    return res;
 }
 
-fn part_1(height_map: &str) -> Option<i32> {
+fn neighbors_part_2(
+    from: &Point2D,
+    height_map: &Vec<Vec<u8>>,
+    done: &Vec<Vec<bool>>,
+    width: usize,
+    height: usize,
+) -> Vec<Point2D> {
+    let from_height = height_map[from.y][from.x];
+    let mut res: Vec<Point2D> = Vec::new();
+
+    let dest = from + &Point2D::new(1, 0);
+    if dest.x < width {
+        if !done[dest.y][dest.x] && from_height <= height_map[dest.y][dest.x] + 1 {
+            res.push(dest);
+        }
+    }
+
+    let dest = from + &Point2D::new(0, 1);
+    if dest.y < height {
+        if !done[dest.y][dest.x] && from_height <= height_map[dest.y][dest.x] + 1 {
+            res.push(dest);
+        }
+    }
+
+    if from.x > 0 {
+        let dest = Point2D::new(from.x - 1, from.y);
+        if !done[dest.y][dest.x] && from_height <= height_map[dest.y][dest.x] + 1 {
+            res.push(dest);
+        }
+    }
+
+    if from.y > 0 {
+        let dest = Point2D::new(from.x, from.y - 1);
+        if !done[dest.y][dest.x] && from_height <= height_map[dest.y][dest.x] + 1 {
+            res.push(dest);
+        }
+    }
+
+    return res;
+}
+
+fn parse(height_map: &str) -> Option<(Vec<Vec<u8>>, Point2D, Point2D, usize, usize)> {
     let mut start: Option<Point2D> = None;
     let mut end: Option<Point2D> = None;
 
@@ -178,6 +219,17 @@ fn part_1(height_map: &str) -> Option<i32> {
     let width = height_map.first()?.len();
     let height = height_map.len();
 
+    return Some((height_map, start, end, width, height));
+}
+
+fn dijkstra_shortest_path(
+    height_map: &Vec<Vec<u8>>,
+    start: Point2D,
+    is_end: impl Fn(&Point2D) -> bool,
+    width: usize,
+    height: usize,
+    neighbors: fn(&Point2D, &Vec<Vec<u8>>, &Vec<Vec<bool>>, usize, usize) -> Vec<Point2D>,
+) -> Option<i32> {
     let mut dist = vec![vec![i32::MAX; width]; height];
     dist[start.y][start.x] = 0;
 
@@ -186,11 +238,16 @@ fn part_1(height_map: &str) -> Option<i32> {
     let mut queue: BinaryHeap<Reverse<Point2DWithDist>> = BinaryHeap::new();
     queue.push(Reverse(Point2DWithDist::new(start, 0)));
 
+    let mut found_end: Option<Point2D> = None;
+
     while let Some(current) = queue.pop() {
         let current = current.0.p;
+
+        // Usually Disjkstra doesn't need this done-check here. But our priority-queue doesn't have a decrease-prio operation. Ususally one needs a decrease-prio operation. We don't have one, thus we need an extra done-check here.
         if done[current.y][current.x] {
             continue;
         }
+
         let new_dist = dist[current.y][current.x] + 1;
         for neigh in neighbors(&current, &height_map, &done, width, height) {
             if new_dist < dist[neigh.y][neigh.x] {
@@ -200,10 +257,29 @@ fn part_1(height_map: &str) -> Option<i32> {
             queue.push(Reverse(Point2DWithDist::new(neigh, dist[neigh.y][neigh.x])));
         }
         done[current.y][current.x] = true;
-        if current == end {
+        if is_end(&current) {
+            found_end = Some(current);
             break;
         }
     }
+
+    return match found_end {
+        Some(end_p) => Some(dist[end_p.y][end_p.x]),
+        None => None,
+    };
+}
+
+fn part_1(height_map: &str) -> Option<i32> {
+    let (height_map, start, end, width, height) = parse(height_map)?;
+
+    return dijkstra_shortest_path(
+        &height_map,
+        start,
+        |&p| p == end,
+        width,
+        height,
+        neighbors_part_1,
+    );
 
     // let mut img = vec![vec![Color::path(); width]; height];
     // for y in 0..height {
@@ -235,12 +311,19 @@ fn part_1(height_map: &str) -> Option<i32> {
     // }
     // println!("");
     // println!("");
-
-    return Some(dist[end.y][end.x]);
 }
 
 fn part_2(height_map: &str) -> Option<i32> {
-    return None;
+    let (height_map, _start, end, width, height) = parse(height_map)?;
+
+    return dijkstra_shortest_path(
+        &height_map,
+        end,
+        |&p| height_map[p.y][p.x] == 0,
+        width,
+        height,
+        neighbors_part_2,
+    );
 }
 
 #[test]
@@ -250,7 +333,7 @@ fn test_a() {
 
 #[test]
 fn test_b() {
-    assert_eq!(part_2(TEST_INPUT), None);
+    assert_eq!(part_2(TEST_INPUT), Some(29));
 }
 
 fn main() {
