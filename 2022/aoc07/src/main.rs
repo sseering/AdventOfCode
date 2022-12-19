@@ -121,7 +121,7 @@ pub mod filesystem {
             let mut tree_nodes = VecDeque::from([root]);
             let mut child = &root.first_child;
             while let Some(c) = child {
-                tree_nodes.push_back(&c);
+                tree_nodes.push_back(c);
                 child = &c.first_child;
             }
             Self { tree_nodes }
@@ -133,12 +133,12 @@ pub mod filesystem {
 
         fn next(&mut self) -> Option<Self::Item> {
             let current = self.tree_nodes.pop_back()?;
-            if self.tree_nodes.len() > 0 {
+            if !self.tree_nodes.is_empty() {
                 if let Some(ns) = &current.next_sibling {
-                    self.tree_nodes.push_back(&ns);
+                    self.tree_nodes.push_back(ns);
                     let mut child = &ns.first_child;
                     while let Some(c) = child {
-                        self.tree_nodes.push_back(&c);
+                        self.tree_nodes.push_back(c);
                         child = &c.first_child;
                     }
                 }
@@ -166,10 +166,10 @@ fn parse(cmdline_output: &str) -> Option<filesystem::Node> {
             }
             cwd.pop();
         } else if line.starts_with("$ cd ") {
-            let dir = line.split_whitespace().skip(2).next()?;
+            let dir = line.split_whitespace().nth(2)?;
             cwd.push(String::from(dir));
         } else if line.starts_with("dir ") {
-            let dir = line.split_whitespace().skip(1).next()?;
+            let dir = line.split_whitespace().nth(1)?;
             root.cd(&cwd)?.add_directory(dir);
         } else {
             let mut split = line.split_whitespace();
