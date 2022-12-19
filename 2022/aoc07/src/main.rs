@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 #[allow(unused)]
 const INPUT: &str = include_str!("../input.txt");
 
@@ -96,83 +98,53 @@ impl FilesystemNode {
         }
     }
 
+    #[allow(unused)]
     fn is_file(&self) -> bool {
         return self.size > 0;
     }
 
+    #[allow(unused)]
     fn is_directory(&self) -> bool {
-        return self.size > 0;
+        return self.size == 0;
     }
 
-    fn part_1_score(&self) -> usize {
-        return self.internal_part_1_score().0;
+    fn disk_usage(&self) -> usize {
+        TreeIterator::new(self).map(|n| n.size).sum()
     }
+}
 
-    fn internal_part_1_score(&self) -> (usize, usize) {
-        if self.is_file() {
-            return (0, self.size);
-        }
+struct TreeIterator<'a> {
+    tree_nodes: VecDeque<&'a FilesystemNode>,
+}
 
-        let mut total_score = 0;
-        let mut total_size = 0;
-
-        let mut child = &self.first_child;
+impl<'a> TreeIterator<'a> {
+    fn new(root: &'a FilesystemNode) -> Self {
+        let mut tree_nodes = VecDeque::from([root]);
+        let mut child = &root.first_child;
         while let Some(c) = child {
-            let (scr, siz) = c.internal_part_1_score();
-            total_score += scr;
-            total_size += siz;
-            child = &c.next_sibling;
+            tree_nodes.push_back(&c);
+            child = &c.first_child;
         }
-        if total_size < 100000 {
-            total_score += total_size;
-        }
-
-        return (total_score, total_size);
+        Self { tree_nodes }
     }
+}
 
-    fn part_2_disk_usage(&self) -> usize {
-        if self.is_file() {
-            return self.size;
-        }
+impl<'a> Iterator for TreeIterator<'a> {
+    type Item = &'a FilesystemNode;
 
-        let mut total_size = 0;
-
-        let mut child = &self.first_child;
-        while let Some(c) = child {
-            total_size += c.part_2_disk_usage();
-            child = &c.next_sibling;
-        }
-
-        return total_size;
-    }
-
-    fn internal_part_2_choose_to_delete(&self, missing: usize) -> (usize, usize) {
-        if self.is_file() {
-            return (usize::MAX, self.size);
-        }
-
-        let mut total_size = 0;
-        let mut solution = usize::MAX;
-
-        let mut child = &self.first_child;
-        while let Some(c) = child {
-            let (sol, siz) = c.internal_part_2_choose_to_delete(missing);
-            total_size += siz;
-            if sol >= missing && sol < solution {
-                solution = sol;
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.tree_nodes.pop_back()?;
+        if self.tree_nodes.len() > 0 {
+            if let Some(ns) = &current.next_sibling {
+                self.tree_nodes.push_back(&ns);
+                let mut child = &ns.first_child;
+                while let Some(c) = child {
+                    self.tree_nodes.push_back(&c);
+                    child = &c.first_child;
+                }
             }
-            child = &c.next_sibling;
         }
-
-        if total_size >= missing && total_size < solution {
-            solution = total_size;
-        }
-
-        return (solution, total_size);
-    }
-
-    fn part_2_choose_to_delete(self, missing: usize) -> usize {
-        return self.internal_part_2_choose_to_delete(missing).0;
+        return Some(current);
     }
 }
 
@@ -213,7 +185,18 @@ fn parse(cmdline_output: &str) -> Option<FilesystemNode> {
 fn part_1(cmdline_output: &str) -> Option<usize> {
     let root = parse(cmdline_output)?;
 
-    return Some(root.part_1_score());
+    return Some(
+        TreeIterator::new(&root)
+            .filter_map(|n| {
+                if n.is_directory() {
+                    Some(n.disk_usage())
+                } else {
+                    None
+                }
+            })
+            .filter(|&s| s < 100000)
+            .sum(),
+    );
 }
 
 fn part_2(cmdline_output: &str) -> Option<usize> {
@@ -221,10 +204,26 @@ fn part_2(cmdline_output: &str) -> Option<usize> {
 
     let disk_size: usize = 70000000;
     let needed: usize = 30000000;
-    let free = disk_size - root.part_2_disk_usage();
+    let free = disk_size - root.disk_usage();
     let missing = needed - free;
 
-    return Some(root.part_2_choose_to_delete(missing));
+    let mut found = usize::MAX;
+
+    TreeIterator::new(&root).for_each(|n| {
+        if n.is_file() {
+            return;
+        }
+        let siz = n.disk_usage();
+        if siz >= missing && siz < found {
+            found = siz;
+        }
+    });
+
+    return if found < usize::MAX {
+        Some(found)
+    } else {
+        None
+    };
 }
 
 #[test]
@@ -236,7 +235,7 @@ fn test_a() {
 fn test_ba() {
     let root = parse(TEST_INPUT);
     assert!(root.is_some());
-    assert_eq!(root.unwrap().part_2_disk_usage(), 48381165);
+    assert_eq!(root.unwrap().disk_usage(), 48381165);
 }
 
 #[test]
