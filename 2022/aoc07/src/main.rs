@@ -1,86 +1,97 @@
-use std::collections::VecDeque;
-
 #[allow(unused)]
 const INPUT: &str = include_str!("../input.txt");
 
 #[allow(unused)]
 const TEST_INPUT: &str = include_str!("../test-input.txt");
 
-struct FilesystemNode {
-    first_child: Option<Box<FilesystemNode>>,
-    next_sibling: Option<Box<FilesystemNode>>,
-    name: String,
-    size: usize,
-}
+pub mod filesystem {
+    use std::collections::VecDeque;
 
-impl FilesystemNode {
-    fn create_root() -> Self {
-        Self {
-            first_child: None,
-            next_sibling: None,
-            name: String::from("/"),
-            size: 0,
-        }
+    pub struct Node {
+        first_child: Option<Box<Node>>,
+        next_sibling: Option<Box<Node>>,
+        name: String,
+        size: usize,
     }
 
-    fn internal_add_sibling(&mut self, name: String, size: usize) {
-        match &mut self.next_sibling {
-            Some(ns) => {
-                ns.internal_add_sibling(name, size);
-            }
-            None => {
-                let new = Self {
-                    first_child: None,
-                    next_sibling: None,
-                    name,
-                    size,
-                };
-
-                self.next_sibling = Some(Box::new(new));
+    impl Node {
+        pub fn create_root() -> Self {
+            Self {
+                first_child: None,
+                next_sibling: None,
+                name: String::from("/"),
+                size: 0,
             }
         }
-    }
 
-    fn internal_add_child(&mut self, name: String, size: usize) {
-        match &mut self.first_child {
-            Some(fs) => {
-                fs.internal_add_sibling(name, size);
-            }
-            None => {
-                let new = Self {
-                    first_child: None,
-                    next_sibling: None,
-                    name,
-                    size,
-                };
+        fn add_sibling(&mut self, name: String, size: usize) {
+            match &mut self.next_sibling {
+                Some(ns) => {
+                    ns.add_sibling(name, size);
+                }
+                None => {
+                    let new = Self {
+                        first_child: None,
+                        next_sibling: None,
+                        name,
+                        size,
+                    };
 
-                self.first_child = Some(Box::new(new));
+                    self.next_sibling = Some(Box::new(new));
+                }
             }
         }
-    }
 
-    fn add_directory(&mut self, name: &str) {
-        self.internal_add_child(String::from(name), 0);
-    }
-
-    fn add_file(&mut self, name: &str, size: usize) {
-        self.internal_add_child(String::from(name), size);
-    }
-
-    fn cd(&mut self, path: &Vec<String>) -> Option<&mut Self> {
-        return self.internal_cd(path, 0);
-    }
-
-    fn internal_cd(&mut self, path: &Vec<String>, path_idx: usize) -> Option<&mut Self> {
-        if path[path_idx] == self.name {
-            let idx_p1 = path_idx + 1;
-            if idx_p1 >= path.len() {
-                return Some(self);
-            }
-
+        fn add_child(&mut self, name: String, size: usize) {
             match &mut self.first_child {
-                Some(fc) => {
-                    return fc.internal_cd(path, idx_p1);
+                Some(fs) => {
+                    fs.add_sibling(name, size);
+                }
+                None => {
+                    let new = Self {
+                        first_child: None,
+                        next_sibling: None,
+                        name,
+                        size,
+                    };
+
+                    self.first_child = Some(Box::new(new));
+                }
+            }
+        }
+
+        pub fn add_directory(&mut self, name: &str) {
+            self.add_child(String::from(name), 0);
+        }
+
+        pub fn add_file(&mut self, name: &str, size: usize) {
+            self.add_child(String::from(name), size);
+        }
+
+        pub fn cd(&mut self, path: &Vec<String>) -> Option<&mut Self> {
+            return self.internal_cd(path, 0);
+        }
+
+        fn internal_cd(&mut self, path: &Vec<String>, path_idx: usize) -> Option<&mut Self> {
+            if path[path_idx] == self.name {
+                let idx_p1 = path_idx + 1;
+                if idx_p1 >= path.len() {
+                    return Some(self);
+                }
+
+                match &mut self.first_child {
+                    Some(fc) => {
+                        return fc.internal_cd(path, idx_p1);
+                    }
+                    None => {
+                        return None;
+                    }
+                }
+            }
+
+            match &mut self.next_sibling {
+                Some(ns) => {
+                    return ns.internal_cd(path, path_idx);
                 }
                 None => {
                     return None;
@@ -88,68 +99,57 @@ impl FilesystemNode {
             }
         }
 
-        match &mut self.next_sibling {
-            Some(ns) => {
-                return ns.internal_cd(path, path_idx);
-            }
-            None => {
-                return None;
-            }
+        pub fn is_file(&self) -> bool {
+            return self.size > 0;
+        }
+
+        pub fn is_directory(&self) -> bool {
+            return self.size == 0;
+        }
+
+        pub fn disk_usage(&self) -> usize {
+            TreeIterator::new(self).map(|n| n.size).sum()
         }
     }
 
-    #[allow(unused)]
-    fn is_file(&self) -> bool {
-        return self.size > 0;
+    pub struct TreeIterator<'a> {
+        tree_nodes: VecDeque<&'a Node>,
     }
 
-    #[allow(unused)]
-    fn is_directory(&self) -> bool {
-        return self.size == 0;
-    }
-
-    fn disk_usage(&self) -> usize {
-        TreeIterator::new(self).map(|n| n.size).sum()
-    }
-}
-
-struct TreeIterator<'a> {
-    tree_nodes: VecDeque<&'a FilesystemNode>,
-}
-
-impl<'a> TreeIterator<'a> {
-    fn new(root: &'a FilesystemNode) -> Self {
-        let mut tree_nodes = VecDeque::from([root]);
-        let mut child = &root.first_child;
-        while let Some(c) = child {
-            tree_nodes.push_back(&c);
-            child = &c.first_child;
+    impl<'a> TreeIterator<'a> {
+        pub fn new(root: &'a Node) -> Self {
+            let mut tree_nodes = VecDeque::from([root]);
+            let mut child = &root.first_child;
+            while let Some(c) = child {
+                tree_nodes.push_back(&c);
+                child = &c.first_child;
+            }
+            Self { tree_nodes }
         }
-        Self { tree_nodes }
     }
-}
 
-impl<'a> Iterator for TreeIterator<'a> {
-    type Item = &'a FilesystemNode;
+    impl<'a> Iterator for TreeIterator<'a> {
+        type Item = &'a Node;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.tree_nodes.pop_back()?;
-        if self.tree_nodes.len() > 0 {
-            if let Some(ns) = &current.next_sibling {
-                self.tree_nodes.push_back(&ns);
-                let mut child = &ns.first_child;
-                while let Some(c) = child {
-                    self.tree_nodes.push_back(&c);
-                    child = &c.first_child;
+        fn next(&mut self) -> Option<Self::Item> {
+            let current = self.tree_nodes.pop_back()?;
+            if self.tree_nodes.len() > 0 {
+                if let Some(ns) = &current.next_sibling {
+                    self.tree_nodes.push_back(&ns);
+                    let mut child = &ns.first_child;
+                    while let Some(c) = child {
+                        self.tree_nodes.push_back(&c);
+                        child = &c.first_child;
+                    }
                 }
             }
+            return Some(current);
         }
-        return Some(current);
     }
 }
 
-fn parse(cmdline_output: &str) -> Option<FilesystemNode> {
-    let mut root = FilesystemNode::create_root();
+fn parse(cmdline_output: &str) -> Option<filesystem::Node> {
+    let mut root = filesystem::Node::create_root();
     let mut cwd: Vec<String> = Vec::new();
     for line in cmdline_output.lines() {
         if line.trim().len() <= 0 {
@@ -186,7 +186,7 @@ fn part_1(cmdline_output: &str) -> Option<usize> {
     let root = parse(cmdline_output)?;
 
     return Some(
-        TreeIterator::new(&root)
+        filesystem::TreeIterator::new(&root)
             .filter_map(|n| {
                 if n.is_directory() {
                     Some(n.disk_usage())
@@ -209,7 +209,7 @@ fn part_2(cmdline_output: &str) -> Option<usize> {
 
     let mut found = usize::MAX;
 
-    TreeIterator::new(&root).for_each(|n| {
+    filesystem::TreeIterator::new(&root).for_each(|n| {
         if n.is_file() {
             return;
         }
