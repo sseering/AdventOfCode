@@ -1,0 +1,35 @@
+2023-12-02T00:47:38.063 helix_view::clipboard [DEBUG] Using xsel to interact with the system and selection (primary) clipboard
+2023-12-02T00:47:38.131 helix_vcs [INFO] file is untracked
+2023-12-02T00:47:38.131 helix_vcs [INFO] failed to open diff base for /home/mu/vcs/git/AdventOfCode/2023/aoc01/src/main.rs
+2023-12-02T00:47:38.134 mio::poll [TRACE] registering event source with poller: token=Token(94253978589184), interests=READABLE | WRITABLE
+2023-12-02T00:47:38.134 mio::poll [TRACE] registering event source with poller: token=Token(94253977508992), interests=READABLE | WRITABLE
+2023-12-02T00:47:38.134 mio::poll [TRACE] registering event source with poller: token=Token(94253977049344), interests=READABLE | WRITABLE
+2023-12-02T00:47:38.134 helix_view::editor [DEBUG] editor status: Loaded 1 file.
+2023-12-02T00:47:38.134 mio::poll [TRACE] registering event source with poller: token=Token(94253978410240), interests=READABLE | WRITABLE
+2023-12-02T00:47:38.134 mio::poll [TRACE] registering event source with poller: token=Token(94253976775680), interests=READABLE | WRITABLE
+2023-12-02T00:47:38.135 helix_lsp::client [INFO] Using custom LSP config: {"inlayHints":{"bindingModeHints":{"enable":false},"closingBraceHints":{"minLines":10},"closureReturnTypeHints":{"enable":"with_block"},"discriminantHints":{"enable":"fieldless"},"lifetimeElisionHints":{"enable":"skip_trivial"},"typeHints":{"hideClosureInitialization":false}}}
+2023-12-02T00:47:38.135 helix_lsp::transport [INFO] rust-analyzer -> {"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{"general":{"positionEncodings":["utf-8","utf-32","utf-16"]},"textDocument":{"codeAction":{"codeActionLiteralSupport":{"codeActionKind":{"valueSet":["","quickfix","refactor","refactor.extract","refactor.inline","refactor.rewrite","source","source.organizeImports"]}},"dataSupport":true,"disabledSupport":true,"isPreferredSupport":true,"resolveSupport":{"properties":["edit","command"]}},"completion":{"completionItem":{"deprecatedSupport":true,"insertReplaceSupport":true,"resolveSupport":{"properties":["documentation","detail","additionalTextEdits"]},"snippetSupport":true,"tagSupport":{"valueSet":[1]}},"completionItemKind":{}},"hover":{"contentFormat":["markdown"]},"inlayHint":{"dynamicRegistration":false},"publishDiagnostics":{"versionSupport":true},"rename":{"dynamicRegistration":false,"honorsChangeAnnotations":false,"prepareSupport":true},"signatureHelp":{"signatureInformation":{"activeParameterSupport":true,"documentationFormat":["markdown"],"parameterInformation":{"labelOffsetSupport":true}}}},"window":{"workDoneProgress":true},"workspace":{"applyEdit":true,"configuration":true,"didChangeConfiguration":{"dynamicRegistration":false},"didChangeWatchedFiles":{"dynamicRegistration":true,"relativePatternSupport":false},"executeCommand":{"dynamicRegistration":false},"inlayHint":{"refreshSupport":false},"symbol":{"dynamicRegistration":false},"workspaceEdit":{"documentChanges":true,"failureHandling":"abort","normalizesLineEndings":false,"resourceOperations":["create","rename","delete"]},"workspaceFolders":true}},"clientInfo":{"name":"helix","version":"23.10"},"initializationOptions":{"inlayHints":{"bindingModeHints":{"enable":false},"closingBraceHints":{"minLines":10},"closureReturnTypeHints":{"enable":"with_block"},"discriminantHints":{"enable":"fieldless"},"lifetimeElisionHints":{"enable":"skip_trivial"},"typeHints":{"hideClosureInitialization":false}}},"processId":31601,"rootPath":"/home/mu/vcs/git/AdventOfCode/2023/aoc01","rootUri":"file:///home/mu/vcs/git/AdventOfCode/2023/aoc01","workspaceFolders":[{"name":"aoc01","uri":"file:///home/mu/vcs/git/AdventOfCode/2023/aoc01"}]},"id":0}
+2023-12-02T00:47:38.147 helix_tui::backend::crossterm [DEBUG] The keyboard enhancement protocol is not supported in this terminal (checked in 12.235521ms)
+2023-12-02T00:47:38.148 helix_view::document [DEBUG] id 1 modified - last saved: 0, current: 0
+2023-12-02T00:47:38.149 helix_view::document [DEBUG] id 1 modified - last saved: 0, current: 0
+2023-12-02T00:47:38.314 helix_term::application [DEBUG] received editor event: IdleTimer
+2023-12-02T00:47:38.767 helix_lsp::transport [ERROR] rust-analyzer err <- "error: 'rust-analyzer' is not installed for the toolchain 'stable-x86_64-unknown-linux-gnu'\n"
+2023-12-02T00:47:38.768 helix_lsp::transport [ERROR] rust-analyzer err: <- StreamClosed
+2023-12-02T00:47:38.768 mio::poll [TRACE] deregistering event source from poller
+2023-12-02T00:47:38.768 helix_term::application [DEBUG] received editor event: LanguageServerMessage((0, Notification(Notification { jsonrpc: None, method: "exit", params: None })))
+2023-12-02T00:47:38.768 helix_view::editor [DEBUG] editor status: Language server exited
+2023-12-02T00:47:38.768 mio::poll [TRACE] deregistering event source from poller
+2023-12-02T00:47:38.768 helix_lsp [ERROR] failed to initialize language server: server closed the stream
+2023-12-02T00:47:38.768 helix_lsp::file_event [DEBUG] Removing LSP client: 0
+2023-12-02T00:47:38.802 helix_term::application [DEBUG] received editor event: Redraw
+2023-12-02T00:47:38.803 helix_view::document [DEBUG] id 1 modified - last saved: 0, current: 0
+2023-12-02T00:47:39.405 helix_view::document [DEBUG] id 1 modified - last saved: 0, current: 0
+2023-12-02T00:47:39.560 helix_term::commands::typed [DEBUG] quitting...
+2023-12-02T00:47:39.561 helix_view::document [DEBUG] id 1 modified - last saved: 0, current: 0
+2023-12-02T00:47:39.638 helix_term::commands::typed [DEBUG] quitting...
+2023-12-02T00:47:39.638 helix_view::document [DEBUG] id 1 modified - last saved: 0, current: 0
+2023-12-02T00:47:39.638 helix_term::job [DEBUG] waiting on jobs...
+2023-12-02T00:47:39.638 helix_term::job [DEBUG] waiting on jobs...
+2023-12-02T00:47:39.639 mio::poll [TRACE] deregistering event source from poller
+2023-12-02T00:47:39.639 mio::poll [TRACE] deregistering event source from poller
+2023-12-02T00:47:39.639 mio::poll [TRACE] deregistering event source from poller
