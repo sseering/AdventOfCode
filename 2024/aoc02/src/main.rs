@@ -80,13 +80,13 @@ fn part_2_check_report(
     let mut set_asc_to_false = |idx: usize| {
         asc = false;
         if asc_fail_idx == usize::MAX {
-            asc_fail_idx = idx;
+            asc_fail_idx = idx - 1;
         }
     };
     let mut set_desc_to_false = |idx: usize| {
         desc = false;
         if desc_fail_idx == usize::MAX {
-            desc_fail_idx = idx;
+            desc_fail_idx = idx - 1;
         }
     };
 
