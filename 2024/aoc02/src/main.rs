@@ -142,8 +142,6 @@ fn part_2_simple(reports: &str) -> Option<u32> {
 }
 
 fn part_2(reports: &str) -> Option<u32> {
-    // this implementation is incorrect
-
     let reports = parse_1_2(reports)?;
     let mut res = 0;
     for report in reports {
