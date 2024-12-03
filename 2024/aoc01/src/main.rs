@@ -77,10 +77,10 @@ fn main() {
     }
     match part_2(INPUT) {
         Some(cv) => {
-            println!("Part 1: {0}.", cv);
+            println!("Part 2: {0}.", cv);
         }
         None => {
-            println!("Part 1 failed.");
+            println!("Part 2 failed.");
         }
     }
     println!("Done");
