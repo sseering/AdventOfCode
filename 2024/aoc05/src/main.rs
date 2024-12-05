@@ -1,10 +1,7 @@
 const INPUT: &str = include_str!("../input.txt");
 
-#[test]
-fn test_a() {
-    assert_eq!(
-        part_1(
-            "
+#[allow(unused)]
+const TEST_INPUT: &str = "
 47|53
 97|13
 97|61
@@ -32,50 +29,70 @@ fn test_a() {
 75,29,13
 75,97,47,61,53
 61,13,29
-97,13,75,29,47
-        "
-        ),
-        Some(143)
-    );
+97,13,75,29,47";
+
+#[test]
+fn test_a() {
+    assert_eq!(part_1(TEST_INPUT), Some(143));
 }
 
 #[test]
 fn test_b() {
-    assert_eq!(
-        part_2(
-            "
-47|53
-97|13
-97|61
-97|47
-75|29
-61|13
-75|53
-29|13
-97|29
-53|29
-61|53
-97|53
-61|29
-47|13
-75|47
-97|75
-47|61
-75|61
-47|29
-75|13
-53|13
+    assert_eq!(part_2(TEST_INPUT), Some(123));
+}
 
-75,47,61,53,29
-97,61,53,29,13
-75,29,13
-75,97,47,61,53
-61,13,29
-97,13,75,29,47
-        "
-        ),
-        Some(123)
-    );
+struct Combinations2Iter<'a> {
+    a_idx: usize,
+    b_idx: usize,
+    plen: usize,
+    payload: &'a Vec<usize>,
+}
+
+impl<'a> Combinations2Iter<'a> {
+    fn new(payload: &'a Vec<usize>) -> Self {
+        Self {
+            a_idx: 0,
+            b_idx: 0,
+            plen: payload.len(),
+            payload,
+        }
+    }
+}
+
+impl<'a> Iterator for Combinations2Iter<'a> {
+    type Item = (usize, usize, usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // I considered using .combiantions() from the itertools crate instead of this.
+        // But that function returns Vec`s which can't be destrucured.
+        // Which makes the syntax ugly.
+        // So I roll my own.
+
+        self.b_idx += 1;
+
+        if self.b_idx < self.plen {
+            return Some((
+                self.payload[self.a_idx],
+                self.a_idx,
+                self.payload[self.b_idx],
+                self.b_idx,
+            ));
+        }
+
+        self.a_idx += 1;
+        self.b_idx = self.a_idx + 1;
+
+        if self.b_idx < self.plen {
+            return Some((
+                self.payload[self.a_idx],
+                self.a_idx,
+                self.payload[self.b_idx],
+                self.b_idx,
+            ));
+        }
+
+        return None;
+    }
 }
 
 fn parse_1_2(print_job: &str) -> Option<(Vec<(usize, usize)>, Vec<Vec<usize>>)> {
@@ -111,20 +128,11 @@ fn part_1(print_job: &str) -> Option<usize> {
 
         let mut is_good = true;
 
-        // I considered using .combiantions() from the itertools crate here.
-        // But that function returns Vec`s which can't be destrucured.
-        // Which makes the syntax ugly.
-        // So I roll my own.
-        'outer: for a_idx in 0..plen {
-            for b_idx in (a_idx + 1)..plen {
-                let a = pages[a_idx];
-                let b = pages[b_idx];
-
-                for (before, after) in &ordering_rules {
-                    if b == *before && a == *after {
-                        is_good = false;
-                        break 'outer;
-                    }
+        'outer: for (a, _, b, _) in Combinations2Iter::new(&pages) {
+            for (before, after) in &ordering_rules {
+                if b == *before && a == *after {
+                    is_good = false;
+                    break 'outer;
                 }
             }
         }
@@ -149,22 +157,13 @@ fn part_2(print_job: &str) -> Option<usize> {
         while did_swap {
             did_swap = false;
 
-            // I considered using .combiantions() from the itertools crate here.
-            // But that function returns Vec`s which can't be destrucured.
-            // Which makes the syntax ugly.
-            // So I roll my own.
-            'outer: for a_idx in 0..plen {
-                for b_idx in (a_idx + 1)..plen {
-                    let a = pages[a_idx];
-                    let b = pages[b_idx];
-
-                    for (before, after) in &ordering_rules {
-                        if b == *before && a == *after {
-                            num_swaps += 1;
-                            did_swap = true;
-                            pages.swap(b_idx - 1, b_idx);
-                            break 'outer;
-                        }
+            'outer: for (a, _, b, b_idx) in Combinations2Iter::new(&pages) {
+                for (before, after) in &ordering_rules {
+                    if b == *before && a == *after {
+                        num_swaps += 1;
+                        did_swap = true;
+                        pages.swap(b_idx - 1, b_idx);
+                        break 'outer;
                     }
                 }
             }
