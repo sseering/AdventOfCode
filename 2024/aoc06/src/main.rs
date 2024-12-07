@@ -1,4 +1,7 @@
+use png;
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::BufWriter;
 use std::ops::{Add, Index};
 
 #[allow(unused)]
@@ -67,6 +70,15 @@ impl Index<&Coord2D> for Laboratory {
 }
 
 impl Laboratory {
+    fn new(width: usize, height: usize, positions: Vec<Vec<bool>>) -> Self {
+        Self {
+            f: false,
+            width,
+            height,
+            positions,
+        }
+    }
+
     fn contains(&self, c: &Coord2D) -> bool {
         return c.row >= 0
             && c.col >= 0
@@ -165,15 +177,82 @@ fn parse_map_str(map: &str) -> Option<(Laboratory, Coord2D, Coord2D)> {
     }
 
     return Some((
-        Laboratory {
-            f: false,
-            width,
-            height: positions.len(),
-            positions,
-        },
+        Laboratory::new(width, positions.len(), positions),
         pos,
         direction,
     ));
+}
+
+unsafe fn draw_part_1(
+    lab: &Laboratory,
+    pos: &Coord2D,
+    next_pos: &Coord2D,
+    stepped_on: &HashSet<Coord2D>,
+) {
+    // ffmpeg -f image2 -r 15 -pattern_type glob -i '*.png' -an -c:v libx264 -r 15 timelapse.mp4
+
+    static mut IMG_COUNTER: u32 = 0;
+    IMG_COUNTER += 1;
+
+    let fname = format!("img{0:05}.png", IMG_COUNTER);
+    let out = File::create(fname).unwrap();
+
+    let zoom_factor = 16;
+
+    let mut pixels: Vec<Vec<(u8, u8, u8)>> = Vec::with_capacity(lab.height);
+
+    for row in 0..lab.height {
+        let mut row_pixels: Vec<(u8, u8, u8)> = Vec::with_capacity(lab.width);
+        for col in 0..lab.width {
+            let c = Coord2D {
+                row: row as i32,
+                col: col as i32,
+            };
+
+            if c == *pos {
+                row_pixels.push((255, 0, 0));
+            } else if c == *next_pos {
+                if lab[&c] {
+                    row_pixels.push((204, 204, 204));
+                } else {
+                    row_pixels.push((0, 0, 255));
+                }
+            } else {
+                if lab[&c] {
+                    row_pixels.push((0, 0, 0));
+                } else if stepped_on.contains(&c) {
+                    row_pixels.push((0xFD, 0xEE, 0x73));
+                } else {
+                    row_pixels.push((255, 255, 255));
+                };
+            }
+        }
+        pixels.push(row_pixels);
+    }
+
+    let ref mut png_w = BufWriter::new(out);
+    let mut png_encoder = png::Encoder::new(
+        png_w,
+        (lab.width * zoom_factor) as u32,
+        (lab.height * zoom_factor) as u32,
+    );
+    png_encoder.set_color(png::ColorType::Rgb);
+    png_encoder.set_depth(png::BitDepth::Eight);
+    let mut png_w_2 = png_encoder.write_header().unwrap();
+
+    let mut zoomed_pixels: Vec<u8> =
+        Vec::with_capacity(lab.width * zoom_factor * lab.height * zoom_factor * 3);
+    for row in 0..lab.height {
+        for _z in 0..zoom_factor {
+            for col in 0..lab.width {
+                let (r, g, b) = pixels[row][col];
+                for _ in 0..zoom_factor {
+                    zoomed_pixels.extend_from_slice(&[r, g, b]);
+                }
+            }
+        }
+    }
+    png_w_2.write_image_data(&zoomed_pixels).unwrap();
 }
 
 fn part_1_simple(map: &str) -> Option<usize> {
@@ -184,6 +263,11 @@ fn part_1_simple(map: &str) -> Option<usize> {
         stepped_on.insert(pos.clone());
 
         let mut next_pos = &pos + &direction;
+
+        // unsafe {
+        //     draw_part_1(&lab, &pos, &next_pos, &stepped_on);
+        // }
+
         let mut infinite_loop_check = 0;
         while lab[&next_pos] {
             infinite_loop_check += 1;
@@ -202,7 +286,7 @@ fn part_1_simple(map: &str) -> Option<usize> {
 }
 
 fn part_1(map: &str) -> Option<usize> {
-    None
+    part_1_simple(map)
 }
 
 fn part_2(map: &str) -> Option<usize> {
@@ -220,14 +304,6 @@ fn test_b() {
 }
 
 fn main() {
-    match part_1_simple(INPUT) {
-        Some(cv) => {
-            println!("Part 1 simple: {0}.", cv);
-        }
-        None => {
-            println!("Part 1 simple failed.");
-        }
-    }
     match part_1(INPUT) {
         Some(cv) => {
             println!("Part 1: {0}.", cv);
