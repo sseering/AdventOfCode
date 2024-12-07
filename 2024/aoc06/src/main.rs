@@ -51,6 +51,8 @@ struct Laboratory {
     width: usize,
     height: usize,
     positions: Vec<Vec<bool>>,
+    obstacles_left_2_right: Vec<Coord2D>,
+    obstacles_top_2_bottom: Vec<Coord2D>,
 }
 
 impl Index<&Coord2D> for Laboratory {
@@ -71,11 +73,38 @@ impl Index<&Coord2D> for Laboratory {
 
 impl Laboratory {
     fn new(width: usize, height: usize, positions: Vec<Vec<bool>>) -> Self {
+        let mut obstacles_left_2_right: Vec<Coord2D> = Vec::new();
+        let mut obstacles_top_2_bottom: Vec<Coord2D> = Vec::new();
+
+        for col in 0..width {
+            for row in 0..height {
+                if positions[row][col] {
+                    obstacles_left_2_right.push(Coord2D {
+                        row: row as i32,
+                        col: col as i32,
+                    });
+                }
+            }
+        }
+
+        for row in 0..height {
+            for col in 0..width {
+                if positions[row][col] {
+                    obstacles_top_2_bottom.push(Coord2D {
+                        row: row as i32,
+                        col: col as i32,
+                    });
+                }
+            }
+        }
+
         Self {
             f: false,
             width,
             height,
             positions,
+            obstacles_left_2_right,
+            obstacles_top_2_bottom,
         }
     }
 
@@ -183,6 +212,7 @@ fn parse_map_str(map: &str) -> Option<(Laboratory, Coord2D, Coord2D)> {
     ));
 }
 
+#[allow(unused)]
 unsafe fn draw_part_1(
     lab: &Laboratory,
     pos: &Coord2D,
@@ -289,7 +319,295 @@ fn part_1(map: &str) -> Option<usize> {
     part_1_simple(map)
 }
 
-fn part_2(map: &str) -> Option<usize> {
+unsafe fn draw_part_1_walk_fast_write_png(lab: &Laboratory, pixels: &Vec<Vec<(u8, u8, u8)>>) {
+    // ffmpeg -f image2 -r 15 -pattern_type glob -i '*.png' -an -c:v libx264 -r 15 timelapse.mp4
+
+    let zoom_factor = 16;
+
+    static mut IMG_COUNTER: u32 = 0;
+    IMG_COUNTER += 1;
+
+    let fname = format!("img{0:05}.png", IMG_COUNTER);
+    let out = File::create(fname).unwrap();
+
+    let ref mut png_w = BufWriter::new(out);
+    let mut png_encoder = png::Encoder::new(
+        png_w,
+        (lab.width * zoom_factor) as u32,
+        (lab.height * zoom_factor) as u32,
+    );
+    png_encoder.set_color(png::ColorType::Rgb);
+    png_encoder.set_depth(png::BitDepth::Eight);
+    let mut png_w_2 = png_encoder.write_header().unwrap();
+
+    let mut zoomed_pixels: Vec<u8> =
+        Vec::with_capacity(lab.width * zoom_factor * lab.height * zoom_factor * 3);
+    for row in 0..lab.height {
+        for _z in 0..zoom_factor {
+            for col in 0..lab.width {
+                let (r, g, b) = pixels[row][col];
+                for _ in 0..zoom_factor {
+                    zoomed_pixels.extend_from_slice(&[r, g, b]);
+                }
+            }
+        }
+    }
+    png_w_2.write_image_data(&zoomed_pixels).unwrap();
+}
+
+const UP: Coord2D = Coord2D { row: -1, col: 0 };
+const DOWN: Coord2D = Coord2D { row: 1, col: 0 };
+const LEFT: Coord2D = Coord2D { row: 0, col: -1 };
+const RIGHT: Coord2D = Coord2D { row: 0, col: 1 };
+
+fn coord_is_on_ray(coord: &Coord2D, ray_start: &Coord2D, direction: &Coord2D) -> bool {
+    if *direction == UP {
+        return coord.col == ray_start.col && coord.row < ray_start.row;
+    }
+    if *direction == RIGHT {
+        return coord.col > ray_start.col && coord.row == ray_start.row;
+    }
+    if *direction == DOWN {
+        return coord.col == ray_start.col && coord.row > ray_start.row;
+    }
+    if *direction == LEFT {
+        return coord.col < ray_start.col && coord.row == ray_start.row;
+    }
+    panic!();
+}
+
+#[allow(unused)]
+fn draw_part_1_walk_fast(
+    lab: &Laboratory,
+    pos: &Coord2D,
+    direction: &Coord2D,
+    next_step: &Coord2D,
+) {
+    let mut pixels: Vec<Vec<(u8, u8, u8)>> = Vec::with_capacity(lab.height);
+
+    for row in 0..lab.height {
+        let mut row_pixels: Vec<(u8, u8, u8)> = Vec::with_capacity(lab.width);
+        for col in 0..lab.width {
+            let c = Coord2D {
+                row: row as i32,
+                col: col as i32,
+            };
+
+            if c == *pos {
+                row_pixels.push((255, 0, 0));
+            } else {
+                if lab[&c] {
+                    row_pixels.push((0, 0, 0));
+                } else {
+                    row_pixels.push((255, 255, 255));
+                };
+            }
+        }
+        pixels.push(row_pixels);
+    }
+
+    unsafe {
+        draw_part_1_walk_fast_write_png(lab, &pixels);
+    }
+
+    for row in 0..lab.height {
+        for col in 0..lab.width {
+            let c = Coord2D {
+                row: row as i32,
+                col: col as i32,
+            };
+
+            if c == *pos {
+            } else {
+                if lab[&c] {
+                } else if coord_is_on_ray(&c, pos, direction) {
+                    pixels[row][col] = (204, 204, 204);
+                } else {
+                };
+            }
+        }
+    }
+
+    unsafe {
+        draw_part_1_walk_fast_write_png(lab, &pixels);
+    }
+
+    for row in 0..lab.height {
+        for col in 0..lab.width {
+            let c = Coord2D {
+                row: row as i32,
+                col: col as i32,
+            };
+
+            if c == *pos {
+            } else {
+                if lab[&c] {
+                } else if coord_is_on_ray(&c, pos, direction) {
+                    pixels[row][col] = (0xFD, 0xEE, 0x73);
+                } else {
+                };
+            }
+        }
+    }
+
+    if next_step.row == -1 {
+        return;
+    }
+
+    unsafe {
+        draw_part_1_walk_fast_write_png(lab, &pixels);
+    }
+
+    pixels[next_step.row as usize][next_step.col as usize] = (204, 204, 204);
+
+    unsafe {
+        draw_part_1_walk_fast_write_png(lab, &pixels);
+    }
+
+    pixels[next_step.row as usize][next_step.col as usize] = (0, 0, 255);
+
+    unsafe {
+        draw_part_1_walk_fast_write_png(lab, &pixels);
+    }
+}
+
+fn part_1_walk_fast(map: &str) -> Option<usize> {
+    let (lab, mut pos, mut direction) = parse_map_str(map)?;
+
+    loop {
+        let next_pos;
+        if direction == UP {
+            let mut idx = lab
+                .obstacles_left_2_right
+                .partition_point(|x| x.col < pos.col);
+            let mut closest: i32 = -2;
+            let olen = lab.obstacles_left_2_right.len();
+            while idx < olen {
+                let c = &lab.obstacles_left_2_right[idx];
+                if c.col != pos.col {
+                    break;
+                }
+
+                if c.row < pos.row - 1 {
+                    closest = i32::max(closest, c.row);
+                }
+
+                idx += 1;
+            }
+            if closest == -2 {
+                break;
+            }
+
+            next_pos = Coord2D {
+                row: closest + 1,
+                col: pos.col,
+            };
+        } else if direction == RIGHT {
+            let mut idx = lab
+                .obstacles_top_2_bottom
+                .partition_point(|x| x.row < pos.row);
+            let mut closest: i32 = i32::MAX;
+            let olen = lab.obstacles_top_2_bottom.len();
+            while idx < olen {
+                let c = &lab.obstacles_top_2_bottom[idx];
+                if c.row != pos.row {
+                    break;
+                }
+
+                if c.col > pos.col + 1 {
+                    closest = i32::min(closest, c.col);
+                }
+
+                idx += 1;
+            }
+            if closest == i32::MAX {
+                break;
+            }
+
+            next_pos = Coord2D {
+                row: pos.row,
+                col: closest - 1,
+            };
+        } else if direction == DOWN {
+            let mut idx = lab
+                .obstacles_left_2_right
+                .partition_point(|x| x.col < pos.col);
+            let mut closest: i32 = i32::MAX;
+            let olen = lab.obstacles_left_2_right.len();
+            while idx < olen {
+                let c = &lab.obstacles_left_2_right[idx];
+                if c.col != pos.col {
+                    break;
+                }
+
+                if c.row > pos.row + 1 {
+                    closest = i32::min(closest, c.row);
+                }
+
+                idx += 1;
+            }
+            if closest == i32::MAX {
+                break;
+            }
+
+            next_pos = Coord2D {
+                row: closest - 1,
+                col: pos.col,
+            };
+        } else if direction == LEFT {
+            let mut idx = lab
+                .obstacles_top_2_bottom
+                .partition_point(|x| x.row < pos.row);
+            let mut closest: i32 = -2;
+            let olen = lab.obstacles_top_2_bottom.len();
+            while idx < olen {
+                let c = &lab.obstacles_top_2_bottom[idx];
+                if c.row != pos.row {
+                    break;
+                }
+
+                if c.col < pos.col - 1 {
+                    closest = i32::max(closest, c.col);
+                }
+
+                idx += 1;
+            }
+            if closest == -2 {
+                break;
+            }
+
+            next_pos = Coord2D {
+                row: pos.row,
+                col: closest + 1,
+            };
+        } else {
+            return None;
+        }
+
+        draw_part_1_walk_fast(&lab, &pos, &direction, &next_pos);
+
+        pos = next_pos;
+        let mut next_step = &pos + &direction;
+
+        let mut infinite_loop_check = 0;
+        while lab[&next_step] {
+            infinite_loop_check += 1;
+            if infinite_loop_check > 8 {
+                eprintln!("infinite loop");
+                return None;
+            }
+            direction.rotate_right();
+            next_step = &pos + &direction
+        }
+    }
+
+    draw_part_1_walk_fast(&lab, &pos, &direction, &Coord2D { row: -1, col: -1 });
+    draw_part_1_walk_fast(&lab, &pos, &direction, &Coord2D { row: -1, col: -1 });
+
+    return None;
+}
+
+fn part_2(_map: &str) -> Option<usize> {
     None
 }
 
@@ -304,6 +622,7 @@ fn test_b() {
 }
 
 fn main() {
+    part_1_walk_fast(INPUT);
     match part_1(INPUT) {
         Some(cv) => {
             println!("Part 1: {0}.", cv);
