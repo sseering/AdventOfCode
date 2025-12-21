@@ -1,7 +1,8 @@
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::mem::replace;
-use std::usize;
 
 #[cfg(test)]
 mod tests {
@@ -249,7 +250,10 @@ fn part_1(input: &str, num_steps: usize) -> Option<usize> {
     return Some(l1 * l2 * l3);
 }
 
-fn part_2(input: &str) -> Option<u64> {
+fn part_2_e<F>(input: &str, mut connection_callback: F) -> Option<u64>
+where
+    F: FnMut(&Coord3d, &Coord3d),
+{
     let junction_boxes = parse_1_2(input)?;
     let mut dists = all_distances(&junction_boxes);
 
@@ -257,6 +261,11 @@ fn part_2(input: &str) -> Option<u64> {
 
     loop {
         let lowest_dist = dists.pop()?.0;
+
+        connection_callback(
+            &junction_boxes[lowest_dist.idx_a],
+            &junction_boxes[lowest_dist.idx_b],
+        );
 
         circuits.connect(lowest_dist.idx_a, lowest_dist.idx_b);
 
@@ -266,7 +275,97 @@ fn part_2(input: &str) -> Option<u64> {
     }
 }
 
+fn part_2(input: &str) -> Option<u64> {
+    return part_2_e(input, |_, _| { /* nothing */ });
+}
+
+#[allow(unused)]
+fn junction_boxes_to_javascript() {
+    // for visualization with three.js
+
+    let junction_boxes = parse_1_2(INPUT).unwrap();
+
+    let mut xs = String::from("const xs=[");
+    let mut ys = String::from("const ys=[");
+    let mut zs = String::from("const zs=[");
+
+    let mut minx: u64 = u64::MAX;
+    let mut miny: u64 = u64::MAX;
+    let mut minz: u64 = u64::MAX;
+    let mut maxx: u64 = 0;
+    let mut maxy: u64 = 0;
+    let mut maxz: u64 = 0;
+
+    for jb in &junction_boxes {
+        minx = u64::min(jb.x, minx);
+        miny = u64::min(jb.y, miny);
+        minz = u64::min(jb.z, minz);
+        maxx = u64::max(jb.x, maxx);
+        maxy = u64::max(jb.y, maxy);
+        maxz = u64::max(jb.z, maxz);
+    }
+
+    println!("min x {} y {} z{}", minx, miny, minz);
+    println!("max x {} y {} z{}", maxx, maxy, maxz);
+
+    let xnums: String = junction_boxes
+        .iter()
+        .map(|jb| jb.x.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+    let ynums: String = junction_boxes
+        .iter()
+        .map(|jb| jb.y.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+    let znums: String = junction_boxes
+        .iter()
+        .map(|jb| jb.z.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+
+    xs.push_str(&xnums);
+    ys.push_str(&ynums);
+    zs.push_str(&znums);
+    xs.push_str("];");
+    ys.push_str("];");
+    zs.push_str("];");
+
+    let mut connections = String::from("const connections = [");
+    let mut got_first_connection = false;
+    let connection_callback = |a: &Coord3d, b: &Coord3d| {
+        if got_first_connection {
+            connections.push_str(",");
+        } else {
+            got_first_connection = true;
+        }
+        connections.push_str(&format!(
+            "[{},{},{},{},{},{}]",
+            a.x, a.y, a.z, b.x, b.y, b.z
+        ));
+    };
+    part_2_e(INPUT, connection_callback);
+    connections.push_str("];");
+
+    let mut f = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open("/tmp/junction_boxes_hardcodede.js")
+        .unwrap();
+    f.write_all(xs.as_bytes()).unwrap();
+    f.write_all(ys.as_bytes()).unwrap();
+    f.write_all(zs.as_bytes()).unwrap();
+    f.write_all(connections.as_bytes()).unwrap();
+    f.write_all(format!("const num_junction_boxes = {};", junction_boxes.len()).as_bytes())
+        .unwrap();
+    f.write_all(b"export {xs,ys,zs,num_junction_boxes,connections};")
+        .unwrap();
+}
+
 fn main() {
+    junction_boxes_to_javascript();
+
     match part_1(INPUT, 1000) {
         Some(answer) => {
             println!("part 1: {0}", answer);

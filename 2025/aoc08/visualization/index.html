@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Advent of Code 2025 day 8 visualization with three.js by Stefan Seering</title>
+		<!-- based on https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_cubes.html and https://github.com/mrdoob/three.js/blob/master/examples/webgl_geometry_convex.html -->
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+		<style>
+			body {
+				background-color: #f0f0f0;
+				color: #444;
+			}
+			a {
+				color: #08f;
+			}
+		</style>
+	</head>
+	<body>
+		<p style="padding-left: 1em"><b>Advent of Code 2025 day 8 visualization with three.js by Stefan Seering.</b><br><b>Controls:</b> Orbit: Left mouse / touch: one-finger move.<br>Zoom: Middle mouse, or mousewheel / touch: two-finger spread or squish.<br>Pan: Right mouse, or left mouse + ctrl/meta/shiftKey, or arrow keys / touch: two-finger move.</p>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "./three.module.js",
+					"jbconst": "./junction_boxes_hardcodede.js",
+					"orbitcontrols": "./OrbitControls.js"
+				}
+			}
+		</script>
+
+		<script type="module">
+			import * as THREE from 'three';
+			import { xs, ys, zs, num_junction_boxes, connections } from 'jbconst';
+			import { OrbitControls } from 'orbitcontrols';
+
+			let camera, scene, raycaster, renderer;
+
+			init();
+
+			function init() {
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xf0f0f0 );
+
+				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
+				camera.position.set( -100, 50, 50 );
+				scene.add( camera );
+
+				const light = new THREE.DirectionalLight( 0xffffff, 3 );
+				light.position.set( -100, 100, 100 ).normalize();
+				scene.add( light );
+
+				const geometry = new THREE.BoxGeometry();
+				
+				// const green = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x00ff00 } ) );
+				// green.position.x = -100;
+				// green.position.y = 50;
+				// green.position.z = 50;
+				// green.scale.x = 10.0;
+				// green.scale.y = 10.0;
+				// green.scale.z = 10.0;
+				// scene.add( green );
+
+				const line_material = new THREE.LineBasicMaterial( { color: 0x00ff00 } );
+				// const points = [new THREE.Vector3(50, 50, 50), new THREE.Vector3(0, 0, 0)];
+				// const line = new THREE.Line( new THREE.BufferGeometry().setFromPoints( points ), line_material );
+				// scene.add( line );
+
+				connections.forEach(function(con){
+					const line = new THREE.Line( new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(Math.round(con[0]/1000), Math.round(con[1]/1000), Math.round(con[2]/1000)), new THREE.Vector3(Math.round(con[3]/1000), Math.round(con[4]/1000), Math.round(con[5]/1000))]), line_material);
+					scene.add( line );
+				});
+
+				for ( let i = 0; i < 2000; i ++ ) {
+					const object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0xff0000 } ) );
+
+					object.position.x = Math.round(xs[i]/1000);
+					object.position.y = Math.round(ys[i]/1000);
+					object.position.z = Math.round(zs[i]/1000);
+
+					object.scale.x = 1.0;
+					object.scale.y = 1.0;
+					object.scale.z = 1.0;
+
+					scene.add( object );
+				}
+
+				raycaster = new THREE.Raycaster();
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setAnimationLoop( animate );
+				document.body.appendChild( renderer.domElement );
+
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.minDistance = 20;
+				controls.maxDistance = 150;
+				controls.maxPolarAngle = Math.PI / 2;
+				controls.target.x = 50;
+				controls.target.y = 50;
+				controls.target.z = 50;
+
+				document.addEventListener( 'mousemove', onPointerMove );
+
+				window.addEventListener( 'resize', onWindowResize );
+			}
+
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function onPointerMove( event ) {}
+
+			function animate() {
+				render();
+			}
+
+			function render() {
+				renderer.render( scene, camera );
+			}
+
+		</script>
+
+	</body>
+</html>
